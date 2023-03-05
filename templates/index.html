@@ -31,6 +31,8 @@
             xhr.onload = () => {
                 const decoded = JSON.parse(xhr.response);
                 console.log({response:xhr.response, decoded});
+                // convert decoded.created epoch timestamp to human readable time
+                decoded.created_at = new Date(decoded.created_at).toLocaleTimeString();
                 messageHistory = decoded;
 
                 renderMessages();
