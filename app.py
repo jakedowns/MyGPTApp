@@ -15,16 +15,20 @@ app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True # Reload templates on change
 app.jinja_env.auto_reload = True
 
-def messages_from_rows_to_objects(messages):
+def messages_from_rows_to_objects(messages, include_date=True):
 	messages_as_array_of_objects = []
 	for message in messages:
 		print(json.dumps(message))
-		messages_as_array_of_objects.append({   
+		record = {   
 			# 0 = id
 			"role": message[1],
 			"content": message[2],
-			"created_at": message[3]	
-		});
+		}
+		
+		if include_date:
+			record["created_at"] = message[3]	
+
+		messages_as_array_of_objects.append(record);
 	return messages_as_array_of_objects	
 
 @app.route('/')
@@ -50,7 +54,7 @@ def get_gpt_response():
 		# top_p=1,
 		# frequency_penalty=0,
 		# presence_penalty=0
-		messages=messages_from_rows_to_objects(messages)
+		messages=messages_from_rows_to_objects(messages, False)
 	)
 	store.insert_message('assistant', response['choices'][0]['message']['content'])
 	return jsonify(response)

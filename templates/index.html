@@ -8,13 +8,20 @@
     <div id="chat-history">
     </div>
     <div>
-        <form onsubmit="submitForm(event)">
-            <label for="prompt">Prompt:</label>
+        <form onsubmit="submitForm(event)" onkeydown="maybeSubmit">
             <textarea id="prompt" name="prompt" rows="4" cols="30" autocomplete="false"></textarea>
             <input type="submit" value="Submit">
         </form>
     </div>
     <script>
+        window.maybeSubmit = function(e){
+            // if the user pressed enter with NO modifier, then submit the form
+            if(e.key === 'Enter' && !e.shiftKey){
+                e.preventDefault();
+                submitForm(e);
+            } 
+        }
+
         let messageHistory = [];
         function bootup(){
             console.log('booting up');
@@ -27,6 +34,9 @@
                 messageHistory = decoded;
 
                 renderMessages();
+
+                // scroll to bottom of page
+                window.scrollTo(0,document.body.scrollHeight);
             }; 
             xhr.send(); 
         }
@@ -66,6 +76,7 @@
             const prompt = document.getElementById('prompt').value;
 
             messageHistory.push({role:'user',content:prompt});  
+            renderMessages();
 
             const xhr = new XMLHttpRequest();
             xhr.open('POST', '/gpt');
@@ -82,12 +93,24 @@
         }
     </script>
     <style>
+        form {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #333;
+        }
+        form textarea {
+            width: 100%;
+        }
         #chat-history {
           display: flex;
           flex-direction: column;
           gap: 10px;
           padding: 10px;
           background-color: #f7f7f7;
+          margin-bottom: 100px;
         }
 
         .message {

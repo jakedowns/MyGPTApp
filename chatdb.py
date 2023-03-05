@@ -32,7 +32,9 @@ class MessageStore:
     def insert_message(self, role, content):
         with self.pool.get_connection() as conn:
             # Insert a new message into the table
-            conn.execute("INSERT INTO messages (role, content) VALUES (?, ?)", (role, content))
+            # get current timestamp in sqlite datetime format
+            created_at = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            conn.execute("INSERT INTO messages (role, content, created_at) VALUES (?, ?, ?)", (role, content, created_at))
             conn.commit()
 
     def get_all_messages(self):
