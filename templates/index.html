@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chatbot</title>
+</head>
+<body>
+    <h1>Chatbot</h1>
+    <div id="chat-history">
+    </div>
+    <div>
+        <form onsubmit="submitForm(event)">
+            <label for="prompt">Prompt:</label>
+            <textarea id="prompt" name="prompt" rows="4" cols="30" autocomplete="false"></textarea>
+            <input type="submit" value="Submit">
+        </form>
+    </div>
+    <script>
+        const messageHistory = [];
+        function bootup(){
+            console.log('booting up');
+            // GET our bootup endpoint and retrieve all previous messages in the conversation
+            const xhr = new XMLHttpRequest();   
+            xhr.open('GET', '/bootup'); 
+            xhr.onload = () => {
+                const decoded = JSON.parse(xhr.response);
+                console.log({response:xhr.response, decoded});
+                messageHistory = decoded;
+            }; 
+            xhr.send(); 
+        }
+        bootup();
+
+        function renderMessages(){
+            // clear the #chat-history
+            // print current message list
+            const chatHistory = document.getElementById('chat-history');    
+            chatHistory.innerHTML = ''; 
+            messageHistory.forEach(message => {
+                const newMessage = document.createElement('div');
+                newMessage.classList.add('message');
+                const newMessageInnerParticipant = document.createElement('div');
+                newMessageInnerParticipant.classList.add('message-participant');    
+                const newMessageInnerMessage = document.createElement('div');
+                newMessageInnerMessage.classList.add('message-message');        
+                newMessageInnerMessage.innerText = message;
+                newMessage.appendChild(newMessageInnerParticipant); 
+                newMessage.appendChild(newMessageInnerMessage); 
+
+                chatHistory.appendChild(newMessage);
+            });
+        }
+
+        function submitForm(event) {
+            event.preventDefault();
+            const prompt = document.getElementById('prompt').value;
+
+            messageHistory.push({role:'user',message:prompt});  
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/gpt');
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onload = () => {
+                const decoded = JSON.parse(xhr.response);
+                console.log({response:xhr.response, decoded});
+                messageHistory.push({role:'assistant',message:decoded});  
+            };
+            xhr.send(JSON.stringify({prompt}));
+            // clear prompt area
+            document.getElementById('prompt').value = '';
+        }
+    </script>
+</body>
+</html>
