@@ -15,7 +15,7 @@
         </form>
     </div>
     <script>
-        const messageHistory = [];
+        let messageHistory = [];
         function bootup(){
             console.log('booting up');
             // GET our bootup endpoint and retrieve all previous messages in the conversation
@@ -25,6 +25,8 @@
                 const decoded = JSON.parse(xhr.response);
                 console.log({response:xhr.response, decoded});
                 messageHistory = decoded;
+
+                renderMessages();
             }; 
             xhr.send(); 
         }
@@ -38,13 +40,22 @@
             messageHistory.forEach(message => {
                 const newMessage = document.createElement('div');
                 newMessage.classList.add('message');
+
                 const newMessageInnerParticipant = document.createElement('div');
                 newMessageInnerParticipant.classList.add('message-participant');    
+                newMessageInnerParticipant.innerText = message.role;
+                newMessage.appendChild(newMessageInnerParticipant); 
+                
                 const newMessageInnerMessage = document.createElement('div');
                 newMessageInnerMessage.classList.add('message-message');        
-                newMessageInnerMessage.innerText = message;
-                newMessage.appendChild(newMessageInnerParticipant); 
+                newMessageInnerMessage.innerText = message.content;
                 newMessage.appendChild(newMessageInnerMessage); 
+
+                // convert timestamp to human readable time
+                const newMessageInnerTimestamp = document.createElement('div'); 
+                newMessageInnerTimestamp.classList.add('message-timestamp');    
+                newMessageInnerTimestamp.innerText = new Date(message.created_at).toLocaleTimeString();  
+                newMessage.appendChild(newMessageInnerTimestamp);
 
                 chatHistory.appendChild(newMessage);
             });
@@ -54,7 +65,7 @@
             event.preventDefault();
             const prompt = document.getElementById('prompt').value;
 
-            messageHistory.push({role:'user',message:prompt});  
+            messageHistory.push({role:'user',content:prompt});  
 
             const xhr = new XMLHttpRequest();
             xhr.open('POST', '/gpt');
@@ -62,12 +73,48 @@
             xhr.onload = () => {
                 const decoded = JSON.parse(xhr.response);
                 console.log({response:xhr.response, decoded});
-                messageHistory.push({role:'assistant',message:decoded});  
+                messageHistory.push(decoded.choices[0].message);  
+                renderMessages();
             };
             xhr.send(JSON.stringify({prompt}));
             // clear prompt area
             document.getElementById('prompt').value = '';
         }
     </script>
+    <style>
+        #chat-history {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          padding: 10px;
+          background-color: #f7f7f7;
+        }
+
+        .message {
+          display: flex;
+          flex-direction: row;
+          gap: 10px;
+          padding: 5px;
+          border-radius: 5px;
+          background-color: #ffffff;
+        }
+
+        .message-participant {
+          font-weight: bold;
+        }
+
+        .message-timestamp {
+          font-size: 0.8em;
+          color: #666666;
+        }
+
+        .message-participant[data-participant="user"] {
+          color: #007bff;
+        }
+
+        .message-participant[data-participant="assistant"] {
+          color: #28a745;
+        }
+    </style>
 </body>
 </html>

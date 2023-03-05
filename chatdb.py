@@ -1,26 +1,48 @@
 import sqlite3
+import datetime
+from sqlite3 import Error
+from ConnectionPool import ConnectionPool
+
 
 class MessageStore:
-    def __init__(self, db_file='messages.db'):
-        # Connect to the database (creates a new database if it doesn't exist)
-        self.conn = sqlite3.connect(db_file)
-        # Create a table to store messages
-        self.conn.execute('''CREATE TABLE IF NOT EXISTS messages
-                     (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                     role TEXT NOT NULL,
-                     content TEXT NOT NULL);''')
-    
+    def __init__(self, db_file='messages.db', max_connections=5):
+        self.pool = ConnectionPool(db_file, max_connections)
+
+        with self.pool.get_connection() as conn:
+            # Create a table to store messages
+            conn.execute('''CREATE TABLE IF NOT EXISTS messages
+                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                         role TEXT NOT NULL,
+                         content TEXT NOT NULL);''')
+
+            # Check if the created_at column is already present in the table
+            cursor = conn.execute('''SELECT count(*) FROM sqlite_master WHERE type='table' AND name='messages' AND sql LIKE '%created_at%';''')
+            result = cursor.fetchone()
+            created_at_column_exists = (result[0] > 0)
+            
+            if not created_at_column_exists:
+                # Add a new column to store created_at timestamps
+                conn.execute('''ALTER TABLE messages ADD COLUMN created_at TIMESTAMP;''')
+
+                # Set the value of the created_at column for existing rows to the current timestamp
+                conn.execute('''UPDATE messages SET created_at = CURRENT_TIMESTAMP;''')
+
+
+
     def insert_message(self, role, content):
-        # Insert a new message into the table
-        self.conn.execute("INSERT INTO messages (role, content) VALUES (?, ?)", (role, content))
-        self.conn.commit()
-    
+        with self.pool.get_connection() as conn:
+            # Insert a new message into the table
+            conn.execute("INSERT INTO messages (role, content) VALUES (?, ?)", (role, content))
+            conn.commit()
+
     def get_all_messages(self):
-        # Retrieve all messages from the table
-        cursor = self.conn.execute("SELECT * FROM messages")
-        return cursor.fetchall()
-    
+        with self.pool.get_connection() as conn:
+            # Retrieve all messages from the table
+            cursor = conn.execute("SELECT * FROM messages")
+            return cursor.fetchall()
+
     def get_messages_for_prompt(self, n):
-        # Retrieve the most recent n messages from the table
-        cursor = self.conn.execute(f"SELECT * FROM messages ORDER BY id DESC LIMIT {n}")
-        return cursor.fetchall()[::-1] # Reverse the order of the messages to return them in chronological order
+        with self.pool.get_connection() as conn:
+            # Retrieve the most recent n messages from the table
+            cursor = conn.execute(f"SELECT * FROM messages ORDER BY id DESC LIMIT {n}")
+            return cursor.fetchall()[::-1] # Reverse the order of the messages to return them in chronological order
