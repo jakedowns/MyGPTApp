@@ -2,6 +2,7 @@ Flask==2.2.3
 Flask-SQLAlchemy==3.0.3
 flask-marshmallow==0.14.0
 marshmallow-sqlalchemy
+flask_debugtoolbar
 openai==0.26.5
 Redis
 rq

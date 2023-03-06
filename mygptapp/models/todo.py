@@ -4,7 +4,7 @@ from mygptapp import db
 
 class Todo(db.Model):
     name = "todo"
-    table_name = "todos"
+    __table_name__ = "todos"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String)

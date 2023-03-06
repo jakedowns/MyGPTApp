@@ -1,16 +1,16 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-
+from sqlalchemy.sql import func
 from mygptapp import db
 
 class Message(db.Model):
     name = "message"
-    table_name = "messages"
+    __tablename__ = "messages"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     role = Column(String)
     content = Column(String)
-    created_at = Column(DateTime)
+    created_at = db.Column(db.DateTime, server_default=func.now())
     user_id = Column(Integer, ForeignKey("users.id"))
     #user = relationship("User", backref="messages")
     convo_id = Column(Integer, ForeignKey("conversations.id"))

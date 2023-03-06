@@ -20,8 +20,4 @@ class MessageCreateSchema(Schema):
     role = fields.Str(required=True)
     content = fields.Str(required=True)
     user_id = fields.Int(required=True)
-
-    @pre_load
-    def add_created_at(self, data, **kwargs):
-        data['created_at'] = datetime.utcnow()
-        return data
+    convo_id = fields.Int(required=True)
