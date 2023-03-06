@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from gpt3 import db
+from mygptapp import db
 
 class Todo(db.Model):
     name = "todo"

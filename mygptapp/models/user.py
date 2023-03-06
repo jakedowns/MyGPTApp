@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.orm import relationship
-from gpt3 import db
+from mygptapp import db
 
 class User(db.Model):
     name = "user"
@@ -14,3 +14,4 @@ class User(db.Model):
     updated_at = Column(DateTime)
     #messages = relationship("Message", backref="user", lazy="dynamic")
     #todos = relationship("ToDo", back_populates="owner")
+    #conversations = relationship("Conversation", back_populates="user")

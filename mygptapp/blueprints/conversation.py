@@ -1,8 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_socketio import emit
-from app import db, socketio, app
-from models import Conversation, Message, User
-from schemas import ConversationSchema, OpenAIApiMessageSchema
+from mygptapp import db, socketio, app
+from mygptapp.models import Conversation, Message, User, OpenAIApiMessageSchema
 from jobs import process_prompt
 
 conversation_bp = Blueprint('conversation_bp', __name__)

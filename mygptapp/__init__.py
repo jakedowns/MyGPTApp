@@ -7,12 +7,15 @@ import rq
 import os
 import sys
 import openai
-
-
 from dotenv import load_dotenv
-script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# get the grand-parent directory of the current file
+script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 env_path = os.path.join(script_dir, '.env')
+
+# load the environment variables from the .env file
 load_dotenv(dotenv_path=env_path)
+
 # Add the parent directory to the system path
 sys.path.append(os.path.dirname(script_dir))
 
@@ -30,26 +33,29 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mydatabase.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.jinja_env.auto_reload = True
 
-redis=None
-redis_url = os.getenv('REDIS_URL')
-if redis_url:
-    redis = Redis.from_url(redis_url)
-else:
-    # handle the case when the REDIS_URL environment variable is not set
-    print("error REDIS_URL not set")
-    # exit
-    exit()
-
-queue = rq.Queue(connection=redis)
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 
-from gpt3.models import Message, User, Conversation, Todo
+# Set up application context
+with app.app_context():
+    Session = scoped_session(sessionmaker(bind=db.engine))
 
-Session = scoped_session(sessionmaker(bind=db.engine))
+    redis=None
+    redis_url = os.getenv('REDIS_URL')
+    if redis_url:
+        redis = Redis.from_url(redis_url)
+    else:
+        # handle the case when the REDIS_URL environment variable is not set
+        print("error REDIS_URL not set")
+        # exit
+        exit()
+    queue = rq.Queue(connection=redis)
+
+from mygptapp.models import User, Message, Conversation, Todo
 
 @app.before_first_request
 def create_tables():
+    print("Creating tables...")
     db.create_all()
     # if there is no bot user in the database, create one
     if not User.query.filter_by(username="bot").first():
@@ -65,8 +71,4 @@ def shutdown_session(exception=None):
 def remove_session(exception=None):
     Session.remove()
 
-import routes
-
-if __name__ == '__main__':
-	extra_files = ['templates/index.html', 'app.py', 'chatdb.py']
-	app.run(port=8888, debug=True, extra_files=extra_files)
+from mygptapp.routes import *
