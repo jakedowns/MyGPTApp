@@ -44,6 +44,8 @@ def process_scrape_results(original_prompt, scraper):
     messages.append({"role": "system", "content": "Please respond with your next action request based on the scrape results. If the answer to the original question is not in the scrape results, please use a think action to think about what you might do next to resolve the question."})
 
     print("calling the model with a followup prompt: ", messages)
+    followup = call_model(messages)
+    return followup
 
 
 
@@ -315,7 +317,10 @@ def handle_action(current_prompt, action_obj, attempt, max_attempts):
         db.session.commit()
 
         # 2. get a response from OpenAI
-        response = call_model([action_obj["thought"] + rules.get_response_rules_text()], attempt, max_attempts)
+        response = call_model([{
+            "role": "assistant",
+            "content": action_obj["thought"] + rules.get_response_rules_text()
+        }])
 
         # 3. store the response to the db
         thoughtMessage = Message(user_id=bot.id, role="assistant", content=response['choices'][0]['message']['content'], convo_id=1, is_inner_thought=True)
@@ -327,6 +332,11 @@ def handle_action(current_prompt, action_obj, attempt, max_attempts):
     elif(action == "scrape_url"):
         scraper = UrlScraper(action_obj["url"])
         response = process_scrape_results(current_prompt, scraper)
+    elif(action == "clear"):
+        # delete all messages in the conversation in one line
+        Message.query.filter_by(convo_id=1).delete()
+        db.session.commit()
+        pass
     else:
         print("unknown action: ", action)
         pass

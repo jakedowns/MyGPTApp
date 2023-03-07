@@ -58,7 +58,7 @@ class Rules:
                 }
             },
             "request_execute_python": {
-                "description": "request to execute python code",
+                "description": "request to execute python code (use this as a last resort)",
                 "params": {
                     "code": {
                         "description": "the python code to execute",
@@ -74,12 +74,16 @@ class Rules:
                         "required": True
                     }
                 }
+            },
+            "clear": {
+                "description": "erase all messages in the current conversation",
+                "params": {}
             }
         }
         return actions_list
 
     def get_response_rules_text(self):
-        text = "REMEMBER YOU MUST ALWAYS FORMAT your response as a valid json array, no exceptions!"
+        text = "\nREMEMBER YOU MUST ALWAYS FORMAT your response as a valid json array, no exceptions!"
 
         text += "the following actions are available. to invoke them, return an array of actions in your response. even if you only pick one, it must be wrapped in an array!"
 
@@ -89,7 +93,14 @@ class Rules:
             for param_name, param in action["params"].items():
                 text += ", \"" + param_name + "\":\"\""
             text += "}"
-            text += " // " + action["description"]
+            i += 1
+
+        text += "\nhere is a description of each action type:"
+        i = 0
+        for action_name, action in self.get_actions_list().items():
+            text += "\n" + str(i) + ". " + action["description"]
+            for param_name, param in action["params"].items():
+                text += "\n\t" + param_name + ": " + param["description"]
             i += 1
 
         text += "\n please use the think action to save your inner thoughts for later reference, like {action: think, thought:\"ok, i'm replying to BASE_PROMPT_HERE, it's going to take me a few actions to get a satisfactory result. my plan is to do x, then y, then z. so far i haven't completed any of those steps. \"} // this will save your inner thought for later reference, so you can search your inner thoughts for it later using {action:search_inner_thoughts,query:\"what is my plan for replying? what is my progress so far, what steps have i completed and what steps do i have left to complete?\"}"
