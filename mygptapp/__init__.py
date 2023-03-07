@@ -10,6 +10,7 @@ import os
 import sys
 import openai
 from dotenv import load_dotenv
+from mygptapp.bing_search import BingSearchAPI
 
 # get the grand-parent directory of the current file
 script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,6 +29,8 @@ sys.path.append(os.path.dirname(script_dir))
 # }
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
+bing_search_api_key = os.getenv("BING_SEARCH_API_KEY")
+bing_search_api = BingSearchAPI(bing_search_api_key)
 
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True # Reload templates on change

@@ -36,16 +36,12 @@
                 const decoded = JSON.parse(xhr.response);
                 console.log({response:xhr.response, decoded});
                 // convert decoded.created epoch timestamp to human readable time
-                decoded.created_at = new Date(decoded.created_at).toLocaleTimeString();
+                decoded.forEach(message => {
+                    message.created_at = new Date(message.created).toLocaleTimeString();
+                });
                 messageHistory = decoded;
 
                 renderMessages();
-
-                // scroll to bottom of page
-                //window.scrollTo(0,document.body.scrollHeight);
-                // scroll chat-history to bottom
-                const chatHistory = document.getElementById('chat-history');
-                chatHistory.scrollTop = chatHistory.scrollHeight;
             };
             xhr.send();
         }
@@ -77,8 +73,36 @@
                 newMessageInnerTimestamp.innerText = new Date(message.created_at).toLocaleTimeString();
                 newMessage.appendChild(newMessageInnerTimestamp);
 
+                // if the message contains a action_response, we print more info
+                // if(message.action_response){
+                //     const newMessageInnerActionResponse = document.createElement('div');
+                //     newMessageInnerActionResponse.classList.add('message-action-response');
+                //     newMessageInnerActionResponse.innerText = message.action_response;
+                //     if(message.action_response['web_search']){
+                //         // print results in a list
+                //         results = message.action_response['web_search']['results'];
+                //         // name, url, snippet
+                //         const newMessageInnerActionResponseList = document.createElement('ul');
+                //         results.forEach(result => {
+                //             const newMessageInnerActionResponseListItem = document.createElement('li');
+                //             newMessageInnerActionResponseListItem.innerHTML = `<a href="${result.url}">${result.name}</a><br>${result.snippet}`;
+                //             newMessageInnerActionResponseList.appendChild(newMessageInnerActionResponseListItem);
+                //         });
+                //         newMessageInnerActionResponse.appendChild(newMessageInnerActionResponseList);
+
+                //         // print the bot's ['follow_up']['choices'][0]['message']['content']
+                //         const newMessageInnerActionResponseFollowUp = document.createElement('div');
+                //         newMessageInnerActionResponseFollowUp.classList.add('message-action-response-follow-up');
+                //         newMessageInnerActionResponseFollowUp.innerText = message.action_response['follow_up']['choices'][0]['message']['content'];
+                //         newMessageInnerActionResponse.appendChild(newMessageInnerActionResponseFollowUp);
+                //     }
+                //     newMessage.appendChild(newMessageInnerActionResponse);
+                // }
+
                 chatHistory.appendChild(newMessage);
             });
+            // scroll chat-history to bottom
+            chatHistory.scrollTop = chatHistory.scrollHeight;
         }
 
         function submitForm(event) {
@@ -94,9 +118,25 @@
             xhr.onload = () => {
                 const decoded = JSON.parse(xhr.response);
                 console.log({response:xhr.response, decoded});
-                let historyEntry = decoded.choices[0].message;
-                historyEntry.created_at = decoded.created;
-                messageHistory.push(historyEntry);
+
+                if(prompt === "/clear" && decoded?.success === true){
+                    messageHistory = [];
+                    renderMessages();
+                    return;
+                }
+
+                if(decoded?.success === false){
+                    messageHistory.push({role:'bot',content:decoded?.error + "\n" + decoded?.response,created_at:Date.now()});
+                    renderMessages();
+                    return;
+                }
+
+                decoded.forEach(entry => {
+                    let historyEntry = entry.choices[0].message;
+                    historyEntry.created_at = new Date(entry.created).toLocaleTimeString();
+                    messageHistory.push(historyEntry);
+                });
+
                 renderMessages();
             };
             xhr.send(JSON.stringify({prompt}));
@@ -116,7 +156,7 @@
         }
         #chat-ui #chat-history {
             flex-grow: 1;
-            flex-shirk: 1;
+            flex-shrink: 1;
             flex-basis:  80vh;
             overflow-y: scroll;
         }

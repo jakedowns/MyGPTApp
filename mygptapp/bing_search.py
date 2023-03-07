@@ -1,7 +1,7 @@
 import requests
 
 class BingSearchAPI:
-    def __init__(self, api_key, endpoint='https://api.cognitive.microsoft.com/bing/v7.0/search'):
+    def __init__(self, api_key, endpoint='https://api.bing.microsoft.com/v7.0/search'):
         self.api_key = api_key
         self.endpoint = endpoint
 
@@ -10,9 +10,11 @@ class BingSearchAPI:
         params = {
             'q': query,
             'count': n,
-            'responseFilter': 'WebPages',
-            'textDecorations': True,
-            'textFormat': 'HTML'
+            #'responseFilter': 'WebPages',
+            #'textDecorations': True,
+            #'textFormat': 'HTML',
+            'mkt': 'en-US',
+            'api-version': '7.0'
         }
 
         # Set the request headers
@@ -25,12 +27,29 @@ class BingSearchAPI:
         response = requests.get(self.endpoint, params=params, headers=headers)
         data = response.json()
 
+        # check for errors
+        if response.status_code != 200:
+            message = "error"
+
+            # extract bing web search api error
+            if "error" in data:
+                if "message" in data["error"]:
+                    message = data["error"]["message"]
+
+            return {
+                'error': {
+                    'code': response.status_code,
+                    'message': message
+                }
+            }
+
         # Extract the top n web results
         results = []
         for result in data['webPages']['value'][:n]:
             results.append({
                 'name': result['name'],
-                'url': result['url']
+                'url': result['url'],
+                'snippet': result['snippet']
             })
 
         return results

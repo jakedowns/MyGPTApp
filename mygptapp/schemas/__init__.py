@@ -21,3 +21,4 @@ class MessageCreateSchema(Schema):
     content = fields.Str(required=True)
     user_id = fields.Int(required=True)
     convo_id = fields.Int(required=True)
+    is_inner_thought = fields.Bool(required=True)

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from mygptapp import db
@@ -15,6 +15,7 @@ class Message(db.Model):
     #user = relationship("User", backref="messages")
     convo_id = Column(Integer, ForeignKey("conversations.id"))
     #conversation = relationship("Conversation", back_populates="messages")
+    is_inner_thought = Column(Boolean, default=False)
 
     def __repr__(self):
         return f'<Message {self.id}: {self.content}>'

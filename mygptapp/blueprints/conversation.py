@@ -17,7 +17,7 @@ def submit_prompt(convo_id):
     if user_id not in [user.id for user in conversation.users]:
         return jsonify({"error": "User is not authorized for this conversation"}), 403
 
-    prompt = Message(convo_id=convo_id, user_id=user_id, content=prompt_text)
+    prompt = Message(convo_id=convo_id, user_id=user_id, content=prompt_text, is_inner_thought=False)
     db.session.add(prompt)
 
     conversation.bot_holds_lock = True
