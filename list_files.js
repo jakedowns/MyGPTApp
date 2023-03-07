@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const blacklist = ['templates', '__pycache__', 'blueprints', 'schemas'];
+const blacklist = ['templates', '__pycache__', 'blueprints', 'schemas', 'database.db'];
 
 function readFiles(dir, fileCallback) {
   fs.readdirSync(dir).forEach(file => {
@@ -15,7 +15,6 @@ function readFiles(dir, fileCallback) {
     if (stat.isDirectory()) {
       readFiles(filePath, fileCallback);
     } else {
-      console.log(`Reading file: ${filePath}`);
       const contents = fs.readFileSync(filePath, 'utf8');
       fileCallback(filePath, contents);
     }
@@ -25,6 +24,11 @@ function readFiles(dir, fileCallback) {
 // Example usage:
 const rootDir = './mygptapp';
 readFiles(rootDir, (filePath, contents) => {
+  console.log(`----------`)
   console.log(`Contents of file ${filePath}:`);
+  console.log(`----------`)
   console.log(contents);
+  console.log(`----------`)
+  console.log(`End of file ${filePath}`)
+  console.log(`----------`)
 });
