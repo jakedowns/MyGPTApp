@@ -1,9 +1,11 @@
-Flask==2.2.3
-Flask-SQLAlchemy==3.0.3
-flask-marshmallow==0.14.0
-marshmallow-sqlalchemy
 flask_debugtoolbar
+flask_socketio
+flask-marshmallow==0.14.0
+Flask-SQLAlchemy==3.0.3
+Flask==2.2.3
+marshmallow-sqlalchemy
 openai==0.26.5
+pyppeteer
 Redis
 rq
 rq-dashboard

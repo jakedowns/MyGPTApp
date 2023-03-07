@@ -3,6 +3,8 @@
 <head>
     <title>Chatbot</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js" integrity="sha384-LzhRnpGmQP+lOvWruF/lgkcqD+WDVt9fU3H4BWmwP5u5LTmkUGafMcpZKNObVMLU" crossorigin="anonymous"></script>
+
 </head>
 <body>
     <h1>Chatbot</h1>
@@ -10,13 +12,15 @@
         <div id="chat-history">
         </div>
         <div id="input-wrapper">
-            <form onsubmit="submitForm(event)" onkeydown="maybeSubmit(event)">
+            <form id="form" onsubmit="submitForm(event)" onkeydown="maybeSubmit(event)">
                 <textarea id="prompt" name="prompt" rows="4" cols="30" autocomplete="false"></textarea>
-                <input type="submit" value="Submit">
+                <input id="submit" type="submit" value="Submit">
             </form>
         </div>
     </div>
     <script>
+        window.my_gpt_app = {};
+        my_gpt_app.bot_holds_lock = false; // used to flag when user should be allow to input / submit
         window.maybeSubmit = function(e){
             // if the user pressed enter with NO modifier, then submit the form
             if(e.key === 'Enter' && !e.shiftKey){
@@ -24,6 +28,16 @@
                 submitForm(e);
             }
         }
+
+        let socket = io();
+
+        socket.on('connect', function() {
+            console.log('Connected to server!');
+        });
+
+        socket.on('message', function(data) {
+            console.log('message received:', data);
+        });
 
         document.getElementById('prompt').focus();
 
@@ -36,6 +50,9 @@
             xhr.onload = () => {
                 const decoded = JSON.parse(xhr.response);
                 console.log({response:xhr.response, decoded});
+                if(decoded?.success){
+                    return;
+                }
                 // convert decoded.created epoch timestamp to human readable time
                 decoded.forEach(message => {
                     message.created_at = new Date(message.created).toLocaleTimeString();
@@ -115,24 +132,45 @@
             chatHistory.scrollTop = chatHistory.scrollHeight;
         }
 
-        const eventSource = new EventSource('/sse');
-        function connectSSE(event){
-            eventSource.addEventListener('open', event => {
-                console.log('Connected to SSE stream');
-            });
+        // const eventSource = new EventSource('/sse');
+        // function connectSSE(event){
+        //     eventSource.addEventListener('open', event => {
+        //         console.log('Connected to SSE stream');
+        //     });
 
-            eventSource.addEventListener('message', event => {
-                // Parse the SSE data
-                const data = JSON.parse(event.data);
+        //     eventSource.addEventListener('message', event => {
+        //         // Parse the SSE data
+        //         const data = JSON.parse(event.data);
 
-                console.log({'sse event:':event,'data':data});
-            });
+        //         console.log({'sse event:':event,'data':data});
+        //     });
+        // }
+        // connectSSE();
+
+        function lockInput(){
+            document.getElementById('prompt').disabled = true;
+            document.getElementById('prompt').placeholder = "Thinking...";
+            // disable submit button
+            document.getElementById('submit').disabled = true;
+            // disable form
+            document.getElementById('form').disabled = true;
         }
-        connectSSE();
+
+        function unlockInput(){
+            document.getElementById('prompt').disabled = false;
+            // enable submit button
+            document.getElementById('submit').disabled = false;
+            // enable form
+            document.getElementById('form').disabled = false;
+        }
 
         function submitForm(event) {
+            my_gpt_app.bot_holds_lock = true;
+
             event.preventDefault();
             const prompt = document.getElementById('prompt').value;
+
+            lockInput()
 
             messageHistory.push({role:'user',content:prompt,created_at:Date.now()});
             renderMessages();

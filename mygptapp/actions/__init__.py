@@ -102,8 +102,10 @@ class Actions:
             return response_arr
 
         # todo: limit the number of actions
-        for action in actions_array:
-            response_arr = self.perform_action(conversation, current_prompt, action, response_arr, attempt, max_attempts)
+        # temp: just run the first action only
+        if len(actions_array) > 0:
+            for action in actions_array[:1]:
+                response_arr = self.perform_action(conversation, current_prompt, action, response_arr, attempt, max_attempts)
 
         return response_arr
 

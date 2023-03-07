@@ -1,4 +1,5 @@
 from flask import Flask
+from flask_socketio import SocketIO, emit
 import logging
 from flask_debugtoolbar import DebugToolbarExtension
 from flask_sqlalchemy import SQLAlchemy
@@ -43,10 +44,14 @@ app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True # Reload templates on change
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.root_path, 'database.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
-app.config['PROPAGATE_EXCEPTIONS'] = True
-toolbar = DebugToolbarExtension(app)
-app.jinja_env.auto_reload = True
+#app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
+#app.config['PROPAGATE_EXCEPTIONS'] = True
+#app.config['SECRET_KEY'] = 'secret!'
+#toolbar = DebugToolbarExtension(app)
+#app.jinja_env.auto_reload = True
+
+logging_enabled = False
+socketio = SocketIO(app, logger=logging_enabled, engineio_logger=logging_enabled)
 
 # configure logging
 handler = logging.StreamHandler()

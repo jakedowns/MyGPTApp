@@ -45,8 +45,7 @@ class WebSearch:
         search_results_as_message += "\n"
         i = 0
         for result in search_results:
-            search_results_as_message += "------------------"
-            search_results_as_message += "\n"
+            search_results_as_message += "\n\n"
             search_results_as_message += "result number: " + str(i) + "\n"
             search_results_as_message += "result title: " + result['name']
             search_results_as_message += "\n"
@@ -54,7 +53,6 @@ class WebSearch:
             search_results_as_message += "\n"
             search_results_as_message += "result snippet: " + result['snippet']
             search_results_as_message += "\n"
-            search_results_as_message += "------------------"
-            search_results_as_message += "\n"
+            search_results_as_message += "\n\n"
             i += 1
         return search_results_as_message
