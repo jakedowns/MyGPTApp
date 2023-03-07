@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Chatbot</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
     <h1>Chatbot</h1>
@@ -27,11 +28,11 @@
         document.getElementById('prompt').focus();
 
         let messageHistory = [];
-        function bootup(){
+        function get_conversation_messages(){
             console.log('booting up');
             // GET our bootup endpoint and retrieve all previous messages in the conversation
             const xhr = new XMLHttpRequest();
-            xhr.open('GET', '/bootup');
+            xhr.open('GET', '/convo/1/messages');
             xhr.onload = () => {
                 const decoded = JSON.parse(xhr.response);
                 console.log({response:xhr.response, decoded});
@@ -45,7 +46,7 @@
             };
             xhr.send();
         }
-        bootup();
+        get_conversation_messages();
 
         function renderMessages(){
             // clear the #chat-history
@@ -60,11 +61,20 @@
                 newMessageInnerParticipant.setAttribute('data-participant', message.role);
                 newMessageInnerParticipant.classList.add('message-participant');
                 newMessageInnerParticipant.innerText = message.role;
+                // if message is_inner_thought, add suffix to role (inner thought)
+                if(message.is_inner_thought){
+                    newMessageInnerParticipant.innerText += '\n(inner thought)';
+                    // add inner-thought class for styling
+                    newMessageInnerParticipant.classList.add('inner-thought');
+                }
                 newMessage.appendChild(newMessageInnerParticipant);
 
                 const newMessageInnerMessage = document.createElement('div');
                 newMessageInnerMessage.classList.add('message-message');
-                newMessageInnerMessage.innerText = message.content;
+                // markdown parsing
+                let parsedText  = marked.parse(message.content.replace(/^[\u200B\u200C\u200D\u200E\u200F\uFEFF]/,""));
+                // WARNING THIS IS UNSAFE!
+                newMessageInnerMessage.innerHTML = parsedText;
                 newMessage.appendChild(newMessageInnerMessage);
 
                 // convert timestamp to human readable time
@@ -105,6 +115,21 @@
             chatHistory.scrollTop = chatHistory.scrollHeight;
         }
 
+        const eventSource = new EventSource('/sse');
+        function connectSSE(event){
+            eventSource.addEventListener('open', event => {
+                console.log('Connected to SSE stream');
+            });
+
+            eventSource.addEventListener('message', event => {
+                // Parse the SSE data
+                const data = JSON.parse(event.data);
+
+                console.log({'sse event:':event,'data':data});
+            });
+        }
+        connectSSE();
+
         function submitForm(event) {
             event.preventDefault();
             const prompt = document.getElementById('prompt').value;
@@ -113,7 +138,7 @@
             renderMessages();
 
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', '/gpt');
+            xhr.open('POST', '/convo/1/message');
             xhr.setRequestHeader('Content-Type', 'application/json');
             xhr.onload = () => {
                 const decoded = JSON.parse(xhr.response);
@@ -148,6 +173,7 @@
         body {
             max-height: 100vh;
             overflow: hidden;
+            font-family: sans-serif;
         }
         #chat-ui {
             display: flex;
@@ -201,6 +227,11 @@
 
         .message-participant {
           font-weight: bold;
+        }
+
+        .inner-thought {
+          font-style: italic;
+          font-size: 9px;
         }
 
         .message-timestamp {

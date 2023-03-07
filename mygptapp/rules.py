@@ -48,6 +48,24 @@ class Rules:
                     }
                 }
             },
+            "final_response": {
+                "description": "final response for the current base prompt. use this to indicate you're done thinking and yeild control back to the user",
+                "params": {
+                    "text": {
+                        "description": "the text of your response",
+                        "required": True
+                    }
+                }
+            },
+            "respond_with_image": {
+                "description": "respond to the user's prompt with an image",
+                "params": {
+                    "image_url": {
+                        "description": "the url of the image to respond with",
+                        "required": True
+                    }
+                }
+            },
             "scrape_url": {
                 "description": "scrape a url for text",
                 "params": {
@@ -57,15 +75,15 @@ class Rules:
                     }
                 }
             },
-            "request_execute_python": {
-                "description": "request to execute python code (use this as a last resort)",
-                "params": {
-                    "code": {
-                        "description": "the python code to execute",
-                        "required": True
-                    }
-                }
-            },
+            # "request_execute_python": {
+            #     "description": "request to execute python code (use this as a last resort)",
+            #     "params": {
+            #         "code": {
+            #             "description": "the python code to execute",
+            #             "required": True
+            #         }
+            #     }
+            # },
             "message_maintainer": {
                 "description": "send a message to the maintainer",
                 "params": {
@@ -75,17 +93,17 @@ class Rules:
                     }
                 }
             },
-            "clear": {
-                "description": "erase all messages in the current conversation",
-                "params": {}
-            }
+            # "clear": {
+            #     "description": "erase all messages in the current conversation",
+            #     "params": {}
+            # }
         }
         return actions_list
 
     def get_response_rules_text(self):
-        text = "\nREMEMBER YOU MUST ALWAYS FORMAT your response as a valid json array, no exceptions!"
+        text = "\nREMEMBER YOU MUST ALWAYS FORMAT YOUR RESPONSE IN THE FORMAT: {\"actions\": [action1, action2, ...]} YOUR ENTIRE RESPONSE MUST BE VALID JSON, do not include any extra commentary about your actions or choices. if you do have something to share, include it in the actions array as a think action or a message_maintainer action.\n"
 
-        text += "the following actions are available. to invoke them, return an array of actions in your response. even if you only pick one, it must be wrapped in an array!"
+        text += "the following actions are available:"
 
         i = 0
         for action_name, action in self.get_actions_list().items():
@@ -103,7 +121,7 @@ class Rules:
                 text += "\n\t" + param_name + ": " + param["description"]
             i += 1
 
-        text += "\n please use the think action to save your inner thoughts for later reference, like {action: think, thought:\"ok, i'm replying to BASE_PROMPT_HERE, it's going to take me a few actions to get a satisfactory result. my plan is to do x, then y, then z. so far i haven't completed any of those steps. \"} // this will save your inner thought for later reference, so you can search your inner thoughts for it later using {action:search_inner_thoughts,query:\"what is my plan for replying? what is my progress so far, what steps have i completed and what steps do i have left to complete?\"}"
+        text += "\n please use the think action to save your inner thoughts for later reference, like {action: think, thought:\"ok, i'm replying to the base prompt: \"example base prompt\", it's going to take me a few actions to get a satisfactory result. my plan is to do x, then y, then z. so far i haven't completed any of those steps. \"} // this will save your inner thought for later reference, so you can search your inner thoughts for it later using {action:search_inner_thoughts,query:\"what is my plan for replying? what is my progress so far, what steps have i completed and what steps do i have left to complete?\"}"
         text += "\n if you find yourself stuck or unsure how to reply to the base prompt, you can {action:think,thought:\"how could i best use my available actions to generate a reply to the base prompt?\"}"
         text += "\n when performing a multi-action reply routine, remember to \"think\" updates to your plan, like step 2 complete. moving on to step 3 now."
 
