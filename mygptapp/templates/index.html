@@ -37,6 +37,9 @@
 
         socket.on('message', function(data) {
             console.log('message received:', data);
+            if(data?.event == 'lock_released'){
+                unlockInput();
+            }
         });
 
         document.getElementById('prompt').focus();
@@ -158,6 +161,8 @@
 
         function unlockInput(){
             document.getElementById('prompt').disabled = false;
+            document.getElementById('prompt').placeholder = "";
+            document.getElementById('prompt').focus();
             // enable submit button
             document.getElementById('submit').disabled = false;
             // enable form
@@ -191,6 +196,10 @@
                 if(decoded?.success === false){
                     messageHistory.push({role:'bot',content:decoded?.error + "\n" + decoded?.response,created_at:Date.now()});
                     renderMessages();
+                    return;
+                }
+
+                if(decoded?.success === true){
                     return;
                 }
 
