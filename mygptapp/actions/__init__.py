@@ -8,7 +8,7 @@ from mygptapp.actions.web_search import WebSearch
 web_search = WebSearch()
 
 class Actions:
-    def perform_action(self, conversation, original_prompt, action, response_arr, attempt, max_attempts):
+    async def perform_action(self, conversation, original_prompt, action, response_arr, attempt, max_attempts):
         #if action is a string for some reason, just return the response_arr unchanged
         if isinstance(action, str):
             return response_arr
@@ -20,7 +20,7 @@ class Actions:
             return response_arr
 
         if action is not None and "action" in action and action["action"] != "respond":
-            action_response = self.handle_action(original_prompt, action, attempt, max_attempts)
+            action_response = await self.handle_action(original_prompt, action, attempt, max_attempts)
 
             if action_response is not None and "action" in action_response and action_response["action"] == "web_search":
                 # stub an extra message that contains the search results
@@ -80,7 +80,7 @@ class Actions:
         print("current actions array:", actions_array)
         return actions_array
 
-    def process_latest_actions_in_response_arr(self, conversation, current_prompt, response_arr, attempt, max_attempts):
+    async def process_latest_actions_in_response_arr(self, conversation, current_prompt, response_arr, attempt, max_attempts):
         # get the latest response
         latest_response = response_arr[-1]
         # get the latest response message.content and see if it contains an action request
@@ -105,11 +105,11 @@ class Actions:
         # temp: just run the first action only
         if len(actions_array) > 0:
             for action in actions_array[:1]:
-                response_arr = self.perform_action(conversation, current_prompt, action, response_arr, attempt, max_attempts)
+                response_arr = await self.perform_action(conversation, current_prompt, action, response_arr, attempt, max_attempts)
 
         return response_arr
 
-    def handle_action(self, current_prompt, action_obj, attempt, max_attempts):
+    async def handle_action(self, current_prompt, action_obj, attempt, max_attempts):
         print("action_obj: ", action_obj)
         action = action_obj["action"]
         response = None # no additional response payload to include
@@ -157,6 +157,7 @@ class Actions:
         elif(action == "scrape_url"):
             from mygptapp.actions.scrape_url import ScrapeURL
             scraper = ScrapeURL(action_obj["url"])
+            await scraper.scrape(scraper.url)
             response = scraper.process_scrape_results(current_prompt)
         elif(action == "clear"):
             # delete all messages in the conversation in one line
