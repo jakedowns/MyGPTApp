@@ -50,7 +50,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 #toolbar = DebugToolbarExtension(app)
 #app.jinja_env.auto_reload = True
 
-logging_enabled = False
+logging_enabled = True
 socketio = SocketIO(app, logger=logging_enabled, engineio_logger=logging_enabled)
 
 # configure logging
