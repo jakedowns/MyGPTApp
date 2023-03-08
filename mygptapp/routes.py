@@ -32,6 +32,12 @@ def post_user_message_to_convo(id):
     })
     return jsonify(status_response_obj)
 
+@app.route('/scrape/<url>')
+def scrape_url(url):
+    from mygptapp.actions.scrape_url import ScrapeURL
+    scraper = ScrapeURL(url)
+    scraper.scrape_pyppeteer_fg(url)
+    return jsonify(scraper.get_response())
 
 @socketio.on('connect')
 def test_connect():
