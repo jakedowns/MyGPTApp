@@ -1,7 +1,0 @@
-digraph G {
-    User -> Post
-    Post -> Comment
-    Post -> 'Likes'
-    User -> Comment
-    Comment -> 'Likes'
-}
