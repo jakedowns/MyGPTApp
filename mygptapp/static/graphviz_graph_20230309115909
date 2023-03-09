@@ -1,0 +1,46 @@
+digraph G {
+  compound=true;
+  rankdir=LR;
+
+  subgraph cluster_preprocessing {
+    label="Preprocessing";
+    style=filled;
+    color=lightgrey;
+    node [style=filled,color=white];
+
+    Subgraph cluster_tokenization {
+      label="Tokenization";
+      edge [color=white];
+      subgraph {
+        Tokenizer -> Token_Classification -> Word_Embedding;
+      }
+    }
+
+    Subgraph cluster_input_enc {
+      label="Input Encoding";
+      edge [color=white];
+      subgraph {
+        Character_Embedding -> Input_Encoding;
+      }
+    }
+  }
+
+  subgraph cluster_gpt3 {
+    label="GPT-3";
+    style=filled;
+    color=lightgrey;
+    node [style=filled,color=white];
+
+    Input_Encoding -> Transformer [label="Attention Masking"] -> Positional_Encoding -> Layer_Normalization -> Linear_Layer [label="Feedforward"] -> Layer_Normalization -> Transformer_Output;
+  }
+
+  subgraph cluster_output {
+    label="Output Processing";
+    style=filled;
+    color=lightgrey;
+    node [style=filled,color=white];
+
+    Transformer_Output -> Self_Attention -> Softmax [label="Next-Token Prediction"] -> Greedy_Decoding;
+    Greedy_Decoding -> Token_Classification -> Deserialization;
+  }
+}

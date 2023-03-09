@@ -1,0 +1,28 @@
+digraph {
+  rankdir=LR;
+  subgraph cluster_0 {
+    style=filled;
+    color=lightgrey;
+    node [style=filled,color=white];
+    label = "User Input";
+  }
+  subgraph cluster_1 {
+    style=filled;
+    color=lightgrey;
+    node [style=filled,color=white];
+    label = "MyGPTAppServer";
+  }
+  subgraph cluster_2 {
+    style=filled;
+    color=lightgrey;
+    node [style=filled,color=white];
+    label = "ChatGPT35Turbo";
+  }
+  subgraph cluster_3 {
+    style=filled;
+    color=lightgrey;
+    node [style=filled,color=white];
+    label = "ActionProcessor";
+  }
+  "User Input" -> "MyGPTAppServer" -> "ChatGPT35Turbo" -> "ActionResponse" -> "MyGPTAppServer" -> "ActionProcessor" -> "perform_action" [label="{action_type}"] -> "ActionResult" -> "ChatGPT35Turbo" -> "feed back to gpt for followup actions";
+}

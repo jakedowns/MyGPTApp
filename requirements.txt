@@ -10,3 +10,4 @@ Redis
 rq
 rq-dashboard
 SQLAlchemy
+Flask[async]

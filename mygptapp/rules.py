@@ -4,7 +4,7 @@ class Rules:
     def get_actions_list(self):
         actions_list = {
             "request_clarification": {
-                "description": "request clarification from the user",
+                "description": "request clarification from the user (yields control back to the user)",
                 "params": {
                     "text": {
                         "description": "the text of the clarification request",
@@ -13,7 +13,7 @@ class Rules:
                 }
             },
             "web_search": {
-                "description": "search the web for a query, when this action is performed, the assistant will have the ability to invoke follow-up actions before responding to the user",
+                "description": "search the web for a query, when this action is performed, the results will be sent to you in a followup message for you to review",
                 "params": {
                     "query": {
                         "description": "the query to search for",
@@ -21,17 +21,17 @@ class Rules:
                     }
                 }
             },
-            "search_inner_thoughts": {
-                "description": "search your inner thoughts for a query",
-                "params": {
-                    "query": {
-                        "description": "the query to search for",
-                        "required": True
-                    }
-                }
-            },
+            # "search_inner_thoughts": {
+            #     "description": "search your inner thoughts for a query",
+            #     "params": {
+            #         "query": {
+            #             "description": "the query to search for",
+            #             "required": True
+            #         }
+            #     }
+            # },
             "think": {
-                "description": "think about a thought, save it to your inner_thoughts for later reference",
+                "description": "something you'd like to think about, this thought will be stored to the db, and run through the GPT-3 model to generate a response",
                 "params": {
                     "thought": {
                         "description": "the thought to think about",
@@ -40,7 +40,7 @@ class Rules:
                 }
             },
             "respond": {
-                "description": "respond to the user's prompt",
+                "description": "respond to the user's prompt, while maintaining control of the conversation (use this to respond to a prompt without yielding control back to the user, when you need to keep thinking or performing actions)",
                 "params": {
                     "text": {
                         "description": "the text of your response",
@@ -57,17 +57,17 @@ class Rules:
                     }
                 }
             },
-            "respond_with_image": {
-                "description": "respond to the user's prompt with an image",
-                "params": {
-                    "image_url": {
-                        "description": "the url of the image to respond with",
-                        "required": True
-                    }
-                }
-            },
+            # "respond_with_image": {
+            #     "description": "respond to the user's prompt with an image",
+            #     "params": {
+            #         "image_url": {
+            #             "description": "the url of the image to respond with",
+            #             "required": True
+            #         }
+            #     }
+            # },
             "scrape_url": {
-                "description": "scrape a url for text",
+                "description": "use this action to scrape any public web url for text you can use to respond to the user's prompt. the scraped text will be sent to you in a followup message for you to review",
                 "params": {
                     "url": {
                         "description": "the url to scrape",
@@ -84,11 +84,20 @@ class Rules:
             #         }
             #     }
             # },
-            "message_maintainer": {
-                "description": "send a message to the maintainer",
+            "commentary": {
+                "description": "include any commentary about your actions or choices here so that the user can see it, while keeping your entire response valid json only",
                 "params": {
                     "text": {
-                        "description": "the text of your message to the maintainer",
+                        "description": "the text of your commentary",
+                        "required": True
+                    }
+                }
+            },
+            "render_graph": {
+                "description": "render a graphviz graph from a dotlang string",
+                "params": {
+                    "dotlang_string": {
+                        "description": "the dotlang string to render. make sure the string is properly encoded for being inside a json object",
                         "required": True
                     }
                 }
@@ -100,12 +109,9 @@ class Rules:
         }
         return actions_list
 
-    def get_response_rules_text(self):
-        text = "\nREMEMBER YOU MUST ALWAYS FORMAT YOUR RESPONSE IN THE FORMAT: {\"actions\": [action1, action2, ...]} YOUR ENTIRE RESPONSE MUST BE VALID JSON, do not include any extra commentary about your actions or choices. if you do have something to share, include it in the actions array as a think action or a message_maintainer action.\n"
-
-        text += "the following actions are available:"
-
-        i = 0
+    def get_actions_list_as_text(self):
+        text = "\nResponse Actions:\n"
+        i = 1
         for action_name, action in self.get_actions_list().items():
             text += "\n" + str(i) + ". {\"action\":\"" + str(action_name) + "\"";
             for param_name, param in action["params"].items():
@@ -113,22 +119,26 @@ class Rules:
             text += "}"
             i += 1
 
-        text += "\nhere is a description of each action type:"
-        i = 0
+        text += "\nhere is a description of each action type and their parameters:"
+        i = 1
         for action_name, action in self.get_actions_list().items():
             text += "\n" + str(i) + ". " + action["description"]
             for param_name, param in action["params"].items():
                 text += "\n\t" + param_name + ": " + param["description"]
             i += 1
-
-        text += "\n please use the think action to save your inner thoughts for later reference, like {action: think, thought:\"ok, i'm replying to the base prompt: \"example base prompt\", it's going to take me a few actions to get a satisfactory result. my plan is to do x, then y, then z. so far i haven't completed any of those steps. \"} // this will save your inner thought for later reference, so you can search your inner thoughts for it later using {action:search_inner_thoughts,query:\"what is my plan for replying? what is my progress so far, what steps have i completed and what steps do i have left to complete?\"}"
-        text += "\n if you find yourself stuck or unsure how to reply to the base prompt, you can {action:think,thought:\"how could i best use my available actions to generate a reply to the base prompt?\"}"
-        text += "\n when performing a multi-action reply routine, remember to \"think\" updates to your plan, like step 2 complete. moving on to step 3 now."
-
         return text
 
-    def get_postscript(self):
+    def get_preamble_text(self):
         today = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        postscript = "\n(postscript) the current date and time is " + today + ". you are an AUGMENTED assistant, meaning you have additional functions available to you beyond your base functions. you have the ability to access real-time information using actions. the preceding messages are a chat between you and a human. the most recent message from the user is the current 'base prompt' you are are now responding to. make sure that your focus is figuring out which array of actions to perform to best reply to the current 'base prompt' in a satisfactory way. you do not need to define ALL your actions up front, some actions like search_web give you an opportunity to invoke a followup action once you have search results to reference. " + self.get_response_rules_text()
-        print(postscript)
-        return postscript
+        text = "\nCONTEXT: you are an augmented assistant, you have access to the internet and other functions via the following actions:\n"
+        text += self.get_actions_list_as_text()
+        text += "\n\n"
+        text += "PRIMARY RULES:\n"
+        text += "\nI want you to act as a api endpoint. I will type commands and you will reply with a json response. I want you to only reply with one unique json object per response, and nothing else. do not write explanations. remember you can only respond with ONE action at a time. please stay in character, you are acting as an api that can only return json action responses, no python."
+        text += "\nAdditional Rules:\n"
+        text += "\n1. your entire response must be a valid json object with a single top-level key called 'actions' which will be an array value type, the array will be a list of actions to perform. the server will only process your first action in the array. if the action you are performing returns extra data, you will be prompted with a followup message to review the data and decide what to do with it. you can then respond to the followup message with a new action to perform, or you can respond with a final_response action to indicate you are done thinking and yeild control back to the user.\n"
+        text += "\n2. the current date and time is " + today + "."
+        text += "\n\n"
+        text += "\nExample Response:\n"
+        text += "\n{\"actions\":[{\"action\":\"respond\", \"text\":\"hello world\"}]}"
+        return text

@@ -22,3 +22,8 @@ class MessageCreateSchema(Schema):
     user_id = fields.Int(required=True)
     convo_id = fields.Int(required=True)
     is_inner_thought = fields.Bool(required=True)
+
+class FrontendMessageSchema(ma.SQLAlchemySchema):
+    class Meta:
+        model = Message
+        fields = ('role', 'content', 'id', 'created_at', 'is_inner_thought')

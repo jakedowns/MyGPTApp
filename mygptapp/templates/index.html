@@ -8,6 +8,9 @@
 </head>
 <body>
     <h1>Chatbot</h1>
+    <div id="connection-status">
+        <div id="connection-status-led"></div>
+    </div>
     <div id="chat-ui">
         <div id="chat-history">
         </div>
@@ -29,16 +32,97 @@
             }
         }
 
+        let get_latest_message_id = function(){
+            // get the latest message id from the messageHistory
+            if(messageHistory.length == 0){
+                return -1;
+            }
+            return messageHistory[messageHistory.length-1].id;
+        }
+
+        // tell server the last message id we received
+        // so the server can send us any messages we missed
+        let tell_server_last_message_id = function(){
+            let payload = {
+                clientid: my_gpt_app.clientid,
+                last_message_id: get_latest_message_id()
+            }
+            console.log('tell_server_last_message_id:', payload)
+            socket.emit('last_message_id', payload);
+        }
+
         let socket = io();
 
-        socket.on('connect', function() {
-            console.log('Connected to server!');
+        // make sure our socket connection remains open, if it closes, reconnect
+        socket.on('disconnect', function(data) {
+            console.log('disconnect response:',data);
+            //socket.connect();
+            setTimeout(()=>{
+                socket = io();
+            }, 300)
+        });
+
+        setInterval(()=>{
+            document.querySelector('#connection-status-led').classList.toggle('connected', socket.connected);
+            document.querySelector('#connection-status-led').classList.toggle('connecting', !socket.connected);
+        },1000)
+
+        socket.on('connect', function(data) {
+            console.log('connect response:',data);
+            if(data === null){
+                return
+            }
+
+            my_gpt_app.clientid = data?.clientid;
+            socket.emit('join', {
+                clientid: data?.clientid,
+                room: "broadcast"
+            });
+            socket.emit('join', {
+                clientid: data?.clientid,
+                room: data?.clientid
+            });
+
+        });
+
+        socket.on('join_success', function(data){
+            let a = `${data?.room}`
+            let b = `${my_gpt_app?.clientid}`
+            let matchesRoom = (a == b) ? true : false
+            console.log('join_success response:',{
+                data,
+                a,
+                b,
+                matchesRoom
+            });
+            if(matchesRoom){
+                // catch up on any messages we missed
+                tell_server_last_message_id();
+            }
         });
 
         socket.on('message', function(data) {
             console.log('message received:', data);
             if(data?.event == 'lock_released'){
                 unlockInput();
+            }
+            else if(data?.event == "received"){
+                if(messageHistory.length){
+                    messageHistory[messageHistory.length-1].id = data.message_id;
+                }
+            }
+            else if(data?.event == 'bot_response'){
+                // add bot response to messageHistory
+                messageHistory.push(data.message);
+                renderMessages();
+            }
+            else if(data?.event == 'missed_messages'){
+                // add missed messages to messageHistory
+                messageHistory = messageHistory.concat(data.messages);
+                renderMessages();
+            }
+            else {
+                console.log('unhandled message:', data);
             }
         });
 
@@ -92,7 +176,11 @@
                 const newMessageInnerMessage = document.createElement('div');
                 newMessageInnerMessage.classList.add('message-message');
                 // markdown parsing
-                let parsedText  = marked.parse(message.content.replace(/^[\u200B\u200C\u200D\u200E\u200F\uFEFF]/,""));
+                let toParse = (message?.content ?? "")
+                    .replace(/^[\u200B\u200C\u200D\u200E\u200F\uFEFF]/,"")
+                    // convert newlines to <br/> tags
+                    .replace(/\n/g, '<br/>')
+                let parsedText  = marked.parse(toParse);
                 // WARNING THIS IS UNSAFE!
                 newMessageInnerMessage.innerHTML = parsedText;
                 newMessage.appendChild(newMessageInnerMessage);
@@ -131,8 +219,10 @@
 
                 chatHistory.appendChild(newMessage);
             });
-            // scroll chat-history to bottom
-            chatHistory.scrollTop = chatHistory.scrollHeight;
+            setTimeout(()=>{
+                // scroll chat-history to bottom
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            }, 500);
         }
 
         // const eventSource = new EventSource('/sse');
@@ -211,12 +301,48 @@
 
                 renderMessages();
             };
-            xhr.send(JSON.stringify({prompt}));
+            xhr.send(JSON.stringify({
+                prompt,
+                clientid:my_gpt_app?.clientid
+            }));
             // clear prompt area
             document.getElementById('prompt').value = '';
         }
     </script>
     <style>
+        h1 {
+            margin-left: 20px;
+        }
+        #connection-status {
+            position: fixed;
+            height: 40px;
+            width: 40px;
+            right: 0;
+            left: auto;
+            top: 0;
+            /*background-color: rgba(0,0,0,0.5);*/
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #connection-status p {
+            font-size: 2em;
+            color: white;
+        }
+        #connection-status-led {
+            width: 1em;
+            height: 1em;
+            border-radius: 50%;
+            background-color: red;
+            margin-right: 1em;
+        }
+        #connection-status-led.connected {
+            background-color: lime;
+        }
+        #connection-status-led.connecting {
+            background-color: orange;
+        }
         body {
             max-height: 100vh;
             overflow: hidden;
@@ -270,6 +396,10 @@
           padding: 5px;
           border-radius: 5px;
           background-color: #ffffff;
+        }
+        .message img {
+            max-width: 60vw;
+            height: auto;
         }
 
         .message-participant {

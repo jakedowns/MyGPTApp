@@ -1,0 +1,64 @@
+digraph G {
+rankdir=LR;
+subgraph cluster_chatgpt {
+label = "ChatGPT Architecture";
+style=filled;
+color=lightgrey;
+
+subgraph cluster_textgen {
+label = "Text Generation";
+style=filled;
+color=white;
+
+subgraph cluster_pretrained {
+label = "Pre-Trained Model";
+style=filled;
+color=lightblue;
+
+Pre-Trained Model ->|input| Masked Language Modeling;
+Masked Language Modeling ->|output| Text Generation;
+}
+
+Text Generation ->|input| Post-Processing;
+Post-Processing ->|output| Utterance;
+}
+
+subgraph cluster_state {
+label = "State Management";
+style=filled;
+color=white;
+
+subgraph cluster_history {
+label = "Conversation History";
+style=filled;
+color=lightblue;
+
+Conversation History ->|input| Utterance;
+Utterance ->|output| Conversation History;
+}
+
+State Management ->|input| Utterance;
+Utterance ->|output| State Management;
+}
+
+subgraph cluster_nlg {
+label = "NLG Training";
+style=filled;
+color=white;
+
+subgraph cluster_reponse_raking {
+label = "Response Ranking";
+style=filled;
+color=lightblue;
+
+Response Ranking ->|input| Conversation History;
+Conversation History ->|output| Response Ranking;
+}
+
+Response Ranking ->|input| Text Generation;
+Text Generation ->|output| NLG Model;
+}
+
+}
+
+}

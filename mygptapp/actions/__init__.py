@@ -1,11 +1,14 @@
 import json
 from mygptapp import db, rules
-from mygptapp import bing_search_api
+from mygptapp import bing_search_api, socketio
 from mygptapp.models import Message, User
 from mygptapp.actions.web_search import WebSearch
 #from mygptapp.actions.scrape_url import ScrapeUrl
+from mygptapp.actions.graphviz_api import GraphVizApi
+from mygptapp.utils import save_and_emit_message
 
 web_search = WebSearch()
+graphviz_api = GraphVizApi()
 
 class Actions:
     async def perform_action(self, conversation, original_prompt, action, response_arr, attempt, max_attempts):
@@ -63,6 +66,8 @@ class Actions:
         return response_arr
 
     def get_actions_from_response(self, response):
+        if not response or 'choices' not in response or len(response['choices']) == 0:
+            return []
         latest_response_content = response['choices'][0]['message']['content']
         actions_array = []
         try:
@@ -101,18 +106,28 @@ class Actions:
             })
             return response_arr
 
-        # todo: limit the number of actions
-        # temp: just run the first action only
         if len(actions_array) > 0:
-            for action in actions_array[:1]:
+            action_limit = 1 # 5
+            current_action = 0
+            while current_action < action_limit and current_action < len(actions_array):
+                action = actions_array[current_action]
                 response_arr = await self.perform_action(conversation, current_prompt, action, response_arr, attempt, max_attempts)
+                current_action += 1
+
+                # emit a socketio event to the client with the most recent entry in the response_arr
+                # socketio.emit('message', {
+                #     "event":"bot_response",
+                #     "message": response_arr[-1]
+                #     }, room="broadcast")
+
 
         return response_arr
 
     async def handle_action(self, current_prompt, action_obj, attempt, max_attempts):
-        print("action_obj: ", action_obj)
+        print("handle_action action_obj: ", action_obj)
         action = action_obj["action"]
         response = None # no additional response payload to include
+        bot = User.query.filter_by(username="bot").first()
 
         # if query key is not present or parameters["query"] is None
         if(action == "web_search" and ("query" not in action_obj or action_obj["query"] is None)):
@@ -125,30 +140,90 @@ class Actions:
             pass
         elif(action == "web_search" or action == "search_web"):
             search_results = bing_search_api.searchAndReturnTopNResults(action_obj["query"], 3)
+
+            save_and_emit_message(
+                user_id=bot.id,
+                role="assistant",
+                content=web_search.search_results_to_message(action_obj["query"], search_results),
+                convo_id=1
+            )
+
             response = web_search.process_web_search_results(current_prompt, action_obj["query"], search_results)
             response["action"] = "web_search"
+
+            save_and_emit_message(
+                user_id=bot.id,
+                role="assistant",
+                content=response['choices'][0]['message']['content'],
+                convo_id=1
+            )
             pass
-        elif(action == "search_inner_thoughts"):
+        elif(action == "render_graph"):
+            graph_url = graphviz_api.render_graphviz_graph_from_dotlang_string(action_obj["dotlang_string"])
+            msg_txt = f"![{graph_url}]({graph_url})\n[View]({graph_url})" if not graph_url.startswith("Error") else graph_url;
+
+            response = {
+                "role": "assistant",
+                "content": msg_txt,
+                "action": "render_graph"
+            }
+
+            # store the message to the db and emit it to the client
+            save_and_emit_message(
+                user_id=bot.id,
+                role="assistant",
+                content=response['content'],
+                convo_id=1,
+                options={
+                    "clientid": "broadcast",
+                }
+            )
             pass
+        # TODO: revisit this
+        # elif(action == "search_inner_thoughts"):
+        #     pass
         elif(action == "think"):
             # 1. write action_obj["thought"] to db
-            bot = User.query.filter_by(username="bot").first()
-            thoughtMessage = Message(user_id=bot.id, role="assistant", content=action_obj["thought"], convo_id=1, is_inner_thought=True)
-            db.session.add(thoughtMessage)
-            db.session.commit()
+            # thoughtMessage = Message(user_id=bot.id, role="assistant", content=action_obj["thought"], convo_id=1, is_inner_thought=True)
+            # db.session.add(thoughtMessage)
+            # db.session.commit()
+            save_and_emit_message(
+                user_id=bot.id,
+                role="assistant",
+                content=action_obj["thought"],
+                convo_id=1,
+                options={
+                    "is_inner_thought": True
+                }
+            )
+
+            # Get all previous inner thoughts from the convo (limit to 10)
+            inner_thoughts = Message.query.filter_by(convo_id=1, is_inner_thought=True).order_by(Message.timestamp.desc()).limit(10).all()
+            # reverse the list so the oldest thoughts are first
+            inner_thoughts.reverse()
 
             # 2. get a response from OpenAI
             from mygptapp.openai_api import OpenAIAPI
             api = OpenAIAPI()
-            response = api.call_model([{
+            response = api.call_model(inner_thoughts.merge([{
                 "role": "assistant",
-                "content": action_obj["thought"] + rules.get_response_rules_text()
-            }])
+                "content": "I am a bot having a conversation with a human. this thread is just my inner thoughts about the conversation. right now I'm about to think my next thought to myself. the next message will be the contents of my thought. i will then respond to that thought using ONLY valid json, nothing more, containing ONE of the following actions: " + rules.get_actions_list_as_text()
+            },{
+                "role": "assistant",
+                "content": action_obj["thought"]
+            }]))
 
             # 3. store the response to the db
-            thoughtMessage = Message(user_id=bot.id, role="assistant", content=response['choices'][0]['message']['content'], convo_id=1, is_inner_thought=True)
-            db.session.add(thoughtMessage)
-            db.session.commit()
+            save_and_emit_message(
+                user_id=bot.id,
+                convo_id=1,
+                role="assistant",
+                content=response['choices'][0]['message']['content'],
+                options={
+                    "is_inner_thought": True,
+                    "clientid": "broadcast"
+                }
+            )
             pass
         elif(action == "respond"):
             pass
@@ -159,6 +234,12 @@ class Actions:
             scraper = ScrapeURL(action_obj["url"])
             await scraper.scrape(scraper.url)
             response = scraper.process_scrape_results(current_prompt)
+            save_and_emit_message(
+                convo_id=1,
+                user_id=bot.id,
+                role="assistant",
+                content=response['choices'][0]['message']['content'],
+            )
         elif(action == "clear"):
             # delete all messages in the conversation in one line
             Message.query.filter_by(convo_id=1).delete()

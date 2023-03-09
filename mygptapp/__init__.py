@@ -50,14 +50,15 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 #toolbar = DebugToolbarExtension(app)
 #app.jinja_env.auto_reload = True
 
-logging_enabled = True
-socketio = SocketIO(app, logger=logging_enabled, engineio_logger=logging_enabled)
 
 # configure logging
 handler = logging.StreamHandler()
 formatter = logging.Formatter('\033[1;31m%(levelname)s\033[1;0m %(message)s')
 handler.setFormatter(formatter)
 app.logger.addHandler(handler)
+
+logging_enabled = True
+socketio = SocketIO(app, logger=logging_enabled, engineio_logger=logging_enabled)
 
 db = SQLAlchemy(app)
 ma = Marshmallow(app)

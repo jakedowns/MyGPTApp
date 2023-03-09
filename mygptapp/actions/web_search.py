@@ -12,12 +12,13 @@ class WebSearch:
 
         # bake search_results into a "chat"
         messages = []
+        messages.append({"role": "user", "content": rules.get_preamble_text()})
         messages.append({"role": "user", "content": original_prompt})
         search_results_as_message = self.search_results_to_message(query, search_results)
         messages.append({"role": "assistant", "content": search_results_as_message})
         messages.append({
             "role": "system",
-            "content": "based on the web results, remembering that search result snippets are usually stale, return a {action:scrape_url} action to get the latest page content ( remember to respond ONLY with valid json, {actions:[]} )." + rules.get_response_rules_text()})
+            "content": "based on these web results, and remembering that search result snippets are usually stale, please return a relevant scrape_url action to respond to the base prompt"})
 
         print("calling the model with a followup prompt: ", messages)
 
@@ -43,15 +44,13 @@ class WebSearch:
     def search_results_to_message(self, query, search_results):
         search_results_as_message = "Relevant Search Results for Query: " + query
         search_results_as_message += "\n"
-        i = 0
+        i = 1
         for result in search_results:
             search_results_as_message += "\n\n"
-            search_results_as_message += "result number: " + str(i) + "\n"
-            search_results_as_message += "result title: " + result['name']
-            search_results_as_message += "\n"
-            search_results_as_message += "result url: " + result['url']
-            search_results_as_message += "\n"
-            search_results_as_message += "result snippet: " + result['snippet']
+            search_results_as_message += "> result " + str(i)
+            search_results_as_message += "\n> result title: " + result['name']
+            search_results_as_message += "\n> result url: `" + result['url'] + "`"
+            search_results_as_message += "\n> result snippet: " + result['snippet']
             search_results_as_message += "\n"
             search_results_as_message += "\n\n"
             i += 1
