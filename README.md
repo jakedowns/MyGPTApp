@@ -20,7 +20,7 @@
 [#ComingSoon]()
 
 ### How It Works
-![/readme_images/arch.png]()
+![https://raw.githubusercontent.com/jakedowns/MyGPTApp/main/readme_images/arch.png]()
 
 
 ### Pre-requisites:
