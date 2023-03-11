@@ -111,3 +111,8 @@ you can also issue follow-up prompts in response to a graph like,
 > 1. scrape_url
 > 1. commentary
 > 1. render_graph
+
+### Thanks
+
+- [Awesome ChatGPT Prompts](https://github.com/f/awesome-chatgpt-prompts)
+- [https://dreampuf.github.io/GraphvizOnline/](https://dreampuf.github.io/GraphvizOnline/)
