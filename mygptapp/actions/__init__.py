@@ -10,6 +10,8 @@ from mygptapp.utils import save_and_emit_message
 web_search = WebSearch()
 graphviz_api = GraphVizApi()
 
+ACTION_LIMIT = 1 # 5
+
 class Actions:
     async def perform_action(self, conversation, original_prompt, action, response_arr, attempt, max_attempts):
         #if action is a string for some reason, just return the response_arr unchanged
@@ -107,9 +109,8 @@ class Actions:
             return response_arr
 
         if len(actions_array) > 0:
-            action_limit = 1 # 5
             current_action = 0
-            while current_action < action_limit and current_action < len(actions_array):
+            while current_action < ACTION_LIMIT and current_action < len(actions_array):
                 action = actions_array[current_action]
                 response_arr = await self.perform_action(conversation, current_prompt, action, response_arr, attempt, max_attempts)
                 current_action += 1

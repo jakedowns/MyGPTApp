@@ -176,10 +176,42 @@
                 const newMessageInnerMessage = document.createElement('div');
                 newMessageInnerMessage.classList.add('message-message');
                 // markdown parsing
-                let toParse = (message?.content ?? "")
+
+                let message_text = message?.content ?? "";
+
+                if(message?.role == "assistant"){
+                    try {
+                        // attempt to parse it as json
+                        let parsed = JSON.parse(message_text);
+                        console.log('parsed message:', parsed)
+                        let action = null;
+                        if(parsed){
+                            if(parsed?.actions){
+                                action = parsed.actions[0];
+                            }else if (parsed?.action){
+                                action = parsed;
+                            }
+                        }
+                        if(action){
+                            if(
+                                action.action == "think"
+                                || action.action == "respond"
+                                || action.action == "final_response"
+                            ){
+                                message_text = action.text;
+                            }else if(
+                                action.action == "render_graph"){
+                                message_text = "```\n" + action.dotlang_string + "\n```";
+                            }
+                        }
+                    }catch(e){
+                        //console.warn('error parsing message as json:', e);
+                    }
+                }
+
+                let toParse = message_text
+                    .trim()
                     .replace(/^[\u200B\u200C\u200D\u200E\u200F\uFEFF]/,"")
-                    // convert newlines to <br/> tags
-                    .replace(/\n/g, '<br/>')
                 let parsedText  = marked.parse(toParse);
                 // WARNING THIS IS UNSAFE!
                 newMessageInnerMessage.innerHTML = parsedText;

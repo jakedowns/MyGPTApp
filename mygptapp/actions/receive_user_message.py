@@ -15,13 +15,21 @@ import threading
 #     loop.close()
 
 async def process_user_input_async(options):
+    # the max number of times the bot can issue a command to be processed in response to a "base prompt"
+    # beyond this number, the server will yield control back to the user, ignoring any further commands
+    # the higher the number, the longer the bot can continue to think and perform actions, but the longer the user will have to wait for a final response
+    MAX_ATTEMPTS = 5
+
+    # the number of most recent messages to send to the chat GPT model to constitute the conversation history
+    NUM_RECENT_MSGS = 5
+
     with app.app_context():
         # jakedowns = User.query.filter_by(username="jakedowns").first()
         bot = User.query.filter_by(username="bot").first()
         conversation = Conversation.query.filter_by(id=1).first()
 
         # get N most recent messages from db for current convo (temp hard-coded to id=1)
-        recent_messages = db.session.query(Message).filter(Message.convo_id == 1).order_by(Message.id.desc()).limit(10).all()
+        recent_messages = db.session.query(Message).filter(Message.convo_id == 1).order_by(Message.id.desc()).limit(NUM_RECENT_MSGS).all()
         #reverse the order of the messages
         recent_messages = recent_messages[::-1]
         recent_messages = [OpenAIApiMessageSchema().dump(message) for message in recent_messages]
@@ -61,7 +69,6 @@ async def process_user_input_async(options):
         # this is our "sub-turn" loop
         # the bot will continue to process actions until it has no more actions to process, or until it has reached the max number of sub-turns
         attempts = 0
-        MAX_ATTEMPTS = 5
         prev_response_arr_length = len(response_arr)
         while attempts < MAX_ATTEMPTS:
             response_arr = await actions.process_latest_actions_in_response_arr(conversation, current_prompt, response_arr, attempts, MAX_ATTEMPTS)

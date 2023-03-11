@@ -3,6 +3,8 @@ flask_socketio
 flask-marshmallow==0.14.0
 Flask-SQLAlchemy==3.0.3
 Flask==2.2.3
+neo4j
+networkx
 marshmallow-sqlalchemy
 openai==0.26.5
 pyppeteer

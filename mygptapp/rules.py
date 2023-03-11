@@ -1,6 +1,21 @@
 import datetime
 
 class Rules:
+    def get_preamble_text(self):
+        today = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        text = "\nCONTEXT: you are an augmented assistant, you have access to the internet and other functions via the following actions:\n"
+        text += self.get_actions_list_as_text()
+        text += "\n\n"
+        text += "PRIMARY RULES:\n"
+        text += "\nI want you to act as a api endpoint. I will type commands and you will reply with a json response. I want you to only reply with one unique json object per response, and nothing else. do not write explanations. remember you can only respond with ONE action at a time. please stay in character, you are acting as an api that can only return json action responses, no python."
+        text += "\nAdditional Rules:\n"
+        text += "\n1. your entire response must be a valid json object with a single top-level key called 'actions' which will be an array value type, the array will be a list of actions to perform. the server will only process your first action in the array. if the action you are performing returns extra data, you will be prompted with a followup message to review the data and decide what to do with it. you can then respond to the followup message with a new action to perform, or you can respond with a final_response action to indicate you are done thinking and yeild control back to the user.\n"
+        text += "\n2. the current date and time is " + today + "."
+        text += "\n\n"
+        text += "\nExample Response:\n"
+        text += "\n{\"actions\":[{\"action\":\"respond\", \"text\":\"hello world\"}]}"
+        return text
+
     def get_actions_list(self):
         actions_list = {
             "request_clarification": {
@@ -102,6 +117,7 @@ class Rules:
                     }
                 }
             },
+            # DONT ENABLE THIS UNLESS YOU'RE OK WITH THE BOT BEING ABLE TO DELETE ALL MESSAGES IN A CONVO ON IT'S OWN
             # "clear": {
             #     "description": "erase all messages in the current conversation",
             #     "params": {}
@@ -128,17 +144,3 @@ class Rules:
             i += 1
         return text
 
-    def get_preamble_text(self):
-        today = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        text = "\nCONTEXT: you are an augmented assistant, you have access to the internet and other functions via the following actions:\n"
-        text += self.get_actions_list_as_text()
-        text += "\n\n"
-        text += "PRIMARY RULES:\n"
-        text += "\nI want you to act as a api endpoint. I will type commands and you will reply with a json response. I want you to only reply with one unique json object per response, and nothing else. do not write explanations. remember you can only respond with ONE action at a time. please stay in character, you are acting as an api that can only return json action responses, no python."
-        text += "\nAdditional Rules:\n"
-        text += "\n1. your entire response must be a valid json object with a single top-level key called 'actions' which will be an array value type, the array will be a list of actions to perform. the server will only process your first action in the array. if the action you are performing returns extra data, you will be prompted with a followup message to review the data and decide what to do with it. you can then respond to the followup message with a new action to perform, or you can respond with a final_response action to indicate you are done thinking and yeild control back to the user.\n"
-        text += "\n2. the current date and time is " + today + "."
-        text += "\n\n"
-        text += "\nExample Response:\n"
-        text += "\n{\"actions\":[{\"action\":\"respond\", \"text\":\"hello world\"}]}"
-        return text
