@@ -7,10 +7,12 @@ class Rules:
         text += self.get_actions_list_as_text()
         text += "\n\n"
         text += "PRIMARY RULES:\n"
-        text += "\nI want you to act as a api endpoint. I will type commands and you will reply with a json response. I want you to only reply with one unique json object per response, and nothing else. do not write explanations. remember you can only respond with ONE action at a time. please stay in character, you are acting as an api that can only return json action responses, no python."
+        text += "\nI want you to act as a api endpoint. I will type commands and you will reply with a json response. I want you to only reply with one unique json object per response, and nothing else. do not write explanations. remember you can only respond with ONE action at a time. please stay in character, you are acting as an api that can only return json action responses, no python. stay in character."
         text += "\nAdditional Rules:\n"
         text += "\n1. your entire response must be a valid json object with a single top-level key called 'actions' which will be an array value type, the array will be a list of actions to perform. the server will only process your first action in the array. if the action you are performing returns extra data, you will be prompted with a followup message to review the data and decide what to do with it. you can then respond to the followup message with a new action to perform, or you can respond with a final_response action to indicate you are done thinking and yeild control back to the user.\n"
         text += "\n2. the current date and time is " + today + "."
+        text += "\n3. when building a response from the results of a web search or scrape url, please cite your sources"
+        text += "\n4. if it seems like the user is asking for factual information, and you are not sure if you have the correct answer, please let the user know when you are hypothesizing, and when you are making a guess"
         text += "\n\n"
         text += "\nExample Response:\n"
         text += "\n{\"actions\":[{\"action\":\"respond\", \"text\":\"hello world\"}]}"
@@ -117,6 +119,50 @@ class Rules:
                     }
                 }
             },
+            "get_todos": {
+                "description": "get the todo list",
+                "params": {} # none
+            },
+            "add_todo": {
+                "description": "add a todo item to the todo list",
+                "params": {
+                    "text": {
+                        "description": "the text of the todo item",
+                        "required": True
+                    }
+                }
+            },
+            "remove_todo": {
+                "description": "remove a todo item from the todo list",
+                "params": {
+                    "id": {
+                        "description": "the id of the todo item to remove",
+                        "required": True
+                    }
+                }
+            },
+            "update_todo": {
+                "description": "update a todo item in the todo list",
+                "params": {
+                    "id": {
+                        "description": "the id of the todo item to update",
+                        "required": True
+                    },
+                    "text": {
+                        "description": "the new text of the todo item",
+                        "required": True
+                    }
+                }
+            },
+            "toggle_todo": {
+                "description": "toggle a todo item in the todo list",
+                "params": {
+                    "id": {
+                        "description": "the id of the todo item to toggle",
+                        "required": True
+                    }
+                }
+            }
             # DONT ENABLE THIS UNLESS YOU'RE OK WITH THE BOT BEING ABLE TO DELETE ALL MESSAGES IN A CONVO ON IT'S OWN
             # "clear": {
             #     "description": "erase all messages in the current conversation",

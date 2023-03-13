@@ -5,8 +5,10 @@ from mygptapp.models import Message, User
 from mygptapp.actions.web_search import WebSearch
 #from mygptapp.actions.scrape_url import ScrapeUrl
 from mygptapp.actions.graphviz_api import GraphVizApi
-from mygptapp.utils import save_and_emit_message
+from mygptapp.actions.todos import Todos
+from mygptapp.utils import save_and_emit_message, emit_message
 
+todos = Todos()
 web_search = WebSearch()
 graphviz_api = GraphVizApi()
 
@@ -60,7 +62,7 @@ class Actions:
             if action_response is not None:
                 response_arr.append(action_response)
 
-        if action is not None and action["action"] == "respond":
+        if action is not None and ( action["action"] == "respond" or ("release_lock" in action and action["release_lock"] == True )):
             # release the lock
             conversation.bot_holds_lock = False
             db.session.commit()
@@ -246,6 +248,53 @@ class Actions:
             Message.query.filter_by(convo_id=1).delete()
             db.session.commit()
             pass
+        elif(action == "get_todos"):
+            message = todos.get_todos_as_message()
+            save_and_emit_message(
+                convo_id=1,
+                user_id=bot.id,
+                role="assistant",
+                content=message,
+            )
+            # flag a response so the bot_holds_lock is released
+            response = {"status": "success", "message": "got todos", "release_lock": True}
+        elif(action == "add_todo"):
+            todo = todos.add_todo(action_obj["text"])
+            todos_as_message = todos.get_todos_as_message()
+            emit_message(
+                message=todos_as_message,
+                options={"clientid": "broadcast"}
+            )
+            response = {"status": "success", "message": "added todo", "id": todo.id, "release_lock": True}
+            pass
+        elif(action == "remove_todo"):
+            todos.remove_todo(action_obj["id"])
+            todos_as_message = todos.get_todos_as_message()
+            emit_message(
+                message=todos_as_message,
+                options={"clientid": "broadcast"}
+            )
+            response = {"status": "success", "message": "removed todo", "release_lock": True}
+            pass
+        elif(action == "update_todo"):
+            todos.update_todo(action_obj["id"], action_obj["text"])
+            todos_as_message = todos.get_todos_as_message()
+            emit_message(
+                message=todos_as_message,
+                options={"clientid": "broadcast"}
+            )
+            response = {"status": "success", "message": "updated todo", "release_lock": True}
+            pass
+        elif(action == "toggle_todo"):
+            todos.toggle_todo(action_obj["id"])
+            todos_as_message = todos.get_todos_as_message()
+            emit_message(
+                message=todos_as_message,
+                options={"clientid": "broadcast"}
+            )
+            response = {"status": "success", "message": "toggled todo", "release_lock": True}
+            pass
+        # elif(action == "get_reminders"):
         else:
             print("unknown action: ", action)
             pass

@@ -2,7 +2,7 @@ import json
 import datetime
 import redis
 from flask_socketio import emit, join_room, leave_room
-from mygptapp.actions.receive_user_message import receive_user_message
+from mygptapp.actions.handle_user_request import handle_user_request
 from flask import jsonify, request, render_template
 from mygptapp import db, app, socketio, rules
 from mygptapp.models import Message, User, Conversation
@@ -44,7 +44,7 @@ def post_user_message_to_convo(id):
     prompt = request.json.get('prompt')
     clientid = request.json.get('clientid')
 
-    status_response_obj = receive_user_message({
+    status_response_obj = handle_user_request({
         "prompt": prompt,
         "convo_id": id,
         "clientid": clientid,

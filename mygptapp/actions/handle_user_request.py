@@ -126,7 +126,7 @@ async def process_user_input_async(options):
         db.session.commit()
         options["_socketio"].emit('message', {"event":"lock_released", "convo_id":1}, room=options["clientid"])
 
-def receive_user_message(options):
+def handle_user_request(options):
     convo_id = options["convo_id"]
     prompt = options["prompt"]
 

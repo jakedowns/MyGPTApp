@@ -73,7 +73,7 @@ you can also issue follow-up prompts in response to a graph like,
 
 ### Configuration:
 
-`mygptapp/actions/receive_user_message.py`
+`mygptapp/actions/handle_user_request.py`
 
 - `NUM_RECENT_MSGS`
 

@@ -3,7 +3,7 @@ from mygptapp.schemas import FrontendMessageSchema, MessageCreateSchema
 from mygptapp.models import Message
 
 def save_and_emit_message(user_id, convo_id, role, content, options={}):
-    print("save_and_emit_message ", content, options)
+    print("save_and_emit_message ", {"content":content, "options":options})
 
     options["is_inner_thought"] = options["is_inner_thought"] if "is_inner_thought" in options else False
 
@@ -24,10 +24,25 @@ def save_and_emit_message(user_id, convo_id, role, content, options={}):
     db.session.add(message)
     db.session.commit()
 
+    # emit the latest response to the client
+    emit_message(message, options)
+
+# message = {role,content}
+def emit_message(message,options={}):
     fe_schema = FrontendMessageSchema()
 
-    # emit the latest response to the client
+    # if the message is a string, wrap it
+    if isinstance(message, str):
+        message = wrap_message_as_bot_message(message)
+
+    options["clientid"] = options["clientid"] if "clientid" in options else "broadcast"
     socketio.emit('message', {
         "event":"bot_response",
         "message": fe_schema.dump(message)
     },room=options["clientid"])
+
+def wrap_message_as_bot_message(message) -> str:
+    return {
+        "role": "assistant",
+        "content": message,
+    }
