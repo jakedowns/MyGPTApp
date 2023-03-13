@@ -16,7 +16,7 @@
         </div>
         <div id="input-wrapper">
             <form id="form" onsubmit="submitForm(event)" onkeydown="maybeSubmit(event)">
-                <textarea id="prompt" name="prompt" rows="4" cols="30" autocomplete="false"></textarea>
+                <textarea id="prompt" name="prompt" rows="4" cols="30" autocomplete="false" onkeyup="maybeChangePrompt(event)"></textarea>
                 <input id="submit" type="submit" value="Submit">
             </form>
         </div>
@@ -29,6 +29,36 @@
             if(e.key === 'Enter' && !e.shiftKey){
                 e.preventDefault();
                 submitForm(e);
+            }
+        }
+
+        window.selecting_previous_prompt = false
+        window.prev_prompt_id = null
+        window.maybeChangePrompt = function(e){
+            // if they pressed the UP arrow, get the previous message from the messageHistory and put it in the prompt (only if the textarea input is empty)
+            //console.log(e.key);
+            if(e.key === 'ArrowUp'){
+                e.preventDefault();
+                let prompt = document.getElementById('prompt');
+                console.log('maybeChangePrompt:', prompt.value, prompt.value.length, 'ArrowUp');
+                if(prompt.value.length == 0 || selecting_previous_prompt){
+                    selecting_previous_prompt = true;
+                    // get the last message from the messageHistory from the user role
+                    let lastMessage = messageHistory.filter(message => message?.role == 'user' && (message?.content ?? "") != "");
+
+                    // if we have a previous prompt id, then get the message before that
+                    if(prev_prompt_id){
+                        lastMessage = lastMessage.filter(message => message?.id < prev_prompt_id);
+                    }
+                    lastMessage = lastMessage.pop();
+                    console.log("lastMessage:", lastMessage)
+                    if(lastMessage){
+                        prev_prompt_id = lastMessage?.id
+                        prompt.value = lastMessage.content;
+                    }
+                }
+            }else{
+                selecting_previous_prompt = false;
             }
         }
 

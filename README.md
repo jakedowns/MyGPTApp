@@ -103,14 +103,21 @@ you can also issue follow-up prompts in response to a graph like,
 
 `mygptapp/rules.py: Rules@get_actions_list` - This method contains the list of actions the bot can respond with. The current "response actions" available are:
 
-> 1. request_clarification
-> 1. web_search
-> 1. think
-> 1. respond
-> 1. final_response
-> 1. scrape_url
-> 1. commentary
-> 1. render_graph
+| Action | Description | Parameters |
+| --- | --- | --- |
+| request_clarification | Request the user to provide more information. | `text: str` |
+| web_search | Search the web for a query. | `query: str` |
+| think | Think about a thought and generate a response. | `thought: str` |
+| respond | Respond to the user's prompt without yielding control back to the user. | `text: str` |
+| final_response | Indicate that you're done thinking and yield control back to the user. | `text: str` |
+| scrape_url | Scrape any public web URL for text to use in the response. | `url: str` |
+| commentary | Include any commentary about your actions or choices to be seen by the user. | `text: str` |
+| render_graph | Render a graphviz graph from a dotlang string. | `dotlang_string: str` |
+| get_todos | Retrieve the current todo list. | None |
+| add_todo | Add a new todo item to the current list. | `text: str` |
+| remove_todo | Remove an existing todo item from the current list. | `id: int` |
+| update_todo | Update an existing todo item in the current list. | `id: int`, `text: str` |
+| toggle_todo | Toggle an existing todo item in the current list. | `id: int` |
 
 ### Thanks
 

@@ -155,7 +155,7 @@ class Rules:
                 }
             },
             "toggle_todo": {
-                "description": "toggle a todo item in the todo list",
+                "description": "toggle a todo item as done/completed/finished in the todo list (don't remove unless specifically requested)",
                 "params": {
                     "id": {
                         "description": "the id of the todo item to toggle",
