@@ -14,8 +14,46 @@ graphviz_api = GraphVizApi()
 
 ACTION_LIMIT = 1 # 5
 
+# process_latest_actions_in_response_arr -> (get_actions_from_response -> (handle_action -> perform_action))
 class Actions:
-    async def perform_action(self, conversation, original_prompt, action, response_arr, attempt, max_attempts):
+    async def process_latest_actions_in_response_arr(self, conversation, current_prompt, response_arr, attempt, max_attempts, options={}):
+        # get the latest response
+        latest_response = response_arr[-1]
+        # get the latest response message.content and see if it contains an action request
+
+        actions_array = []
+        try:
+            actions_array = self.get_actions_from_response(latest_response)
+        except Exception as e:
+            response_arr.append({
+                'choices': [
+                    {
+                        'message': {
+                            'role': 'system',
+                            'content': "Error Encountered, invalid json response: " + latest_response
+                        }
+                    }
+                ]
+            })
+            return response_arr
+
+        if len(actions_array) > 0:
+            current_action = 0
+            while current_action < ACTION_LIMIT and current_action < len(actions_array):
+                action = actions_array[current_action]
+                response_arr = await self.perform_action(conversation, current_prompt, action, response_arr, attempt, max_attempts, options)
+                current_action += 1
+
+                # emit a socketio event to the client with the most recent entry in the response_arr
+                # socketio.emit('message', {
+                #     "event":"bot_response",
+                #     "message": response_arr[-1]
+                #     }, room="broadcast")
+
+
+        return response_arr
+
+    async def perform_action(self, conversation, original_prompt, action, response_arr, attempt, max_attempts, options={}):
         #if action is a string for some reason, just return the response_arr unchanged
         if isinstance(action, str):
             return response_arr
@@ -27,7 +65,7 @@ class Actions:
             return response_arr
 
         if action is not None and "action" in action and action["action"] != "respond":
-            action_response = await self.handle_action(original_prompt, action, attempt, max_attempts)
+            action_response = await self.handle_action(original_prompt, action, attempt, max_attempts, options)
 
             if action_response is not None and "action" in action_response and action_response["action"] == "web_search":
                 # stub an extra message that contains the search results
@@ -89,44 +127,8 @@ class Actions:
         print("current actions array:", actions_array)
         return actions_array
 
-    async def process_latest_actions_in_response_arr(self, conversation, current_prompt, response_arr, attempt, max_attempts):
-        # get the latest response
-        latest_response = response_arr[-1]
-        # get the latest response message.content and see if it contains an action request
 
-        actions_array = []
-        try:
-            actions_array = self.get_actions_from_response(latest_response)
-        except Exception as e:
-            response_arr.append({
-                'choices': [
-                    {
-                        'message': {
-                            'role': 'system',
-                            'content': "Error Encountered, invalid json response: " + latest_response
-                        }
-                    }
-                ]
-            })
-            return response_arr
-
-        if len(actions_array) > 0:
-            current_action = 0
-            while current_action < ACTION_LIMIT and current_action < len(actions_array):
-                action = actions_array[current_action]
-                response_arr = await self.perform_action(conversation, current_prompt, action, response_arr, attempt, max_attempts)
-                current_action += 1
-
-                # emit a socketio event to the client with the most recent entry in the response_arr
-                # socketio.emit('message', {
-                #     "event":"bot_response",
-                #     "message": response_arr[-1]
-                #     }, room="broadcast")
-
-
-        return response_arr
-
-    async def handle_action(self, current_prompt, action_obj, attempt, max_attempts):
+    async def handle_action(self, current_prompt, action_obj, attempt, max_attempts, options={}):
         print("handle_action action_obj: ", action_obj)
         action = action_obj["action"]
         response = None # no additional response payload to include
@@ -255,6 +257,7 @@ class Actions:
                 user_id=bot.id,
                 role="assistant",
                 content=message,
+                options=options
             )
             # flag a response so the bot_holds_lock is released
             response = {"status": "success", "message": "got todos", "release_lock": True}

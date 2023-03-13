@@ -71,7 +71,7 @@ async def process_user_input_async(options):
         attempts = 0
         prev_response_arr_length = len(response_arr)
         while attempts < MAX_ATTEMPTS:
-            response_arr = await actions.process_latest_actions_in_response_arr(conversation, current_prompt, response_arr, attempts, MAX_ATTEMPTS)
+            response_arr = await actions.process_latest_actions_in_response_arr(conversation, current_prompt, response_arr, attempts, MAX_ATTEMPTS, options)
 
             if(len(response_arr) == prev_response_arr_length):
                 print("no new actions were added to the response_arr")

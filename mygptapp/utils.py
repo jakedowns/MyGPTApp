@@ -25,18 +25,21 @@ def save_and_emit_message(user_id, convo_id, role, content, options={}):
     db.session.commit()
 
     # emit the latest response to the client
-    emit_message(message, options)
+    emit_message(message=content, options=options)
 
 # message = {role,content}
 def emit_message(message,options={}):
     fe_schema = FrontendMessageSchema()
 
     # if the message is a string, wrap it
-    if isinstance(message, str):
+    if isinstance(message, Message):
+        pass
+    elif isinstance(message, str):
         message = wrap_message_as_bot_message(message)
 
     options["clientid"] = options["clientid"] if "clientid" in options else "broadcast"
-    socketio.emit('message', {
+    s = options["_socketio"] if "_socketio" in options else socketio
+    s.emit('message', {
         "event":"bot_response",
         "message": fe_schema.dump(message)
     },room=options["clientid"])

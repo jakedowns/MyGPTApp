@@ -7,7 +7,7 @@ class Todos:
         message = ""
         i = 1
         for todo in todos:
-            message += f"\n{todo.id}. {'[x]' if todo.completed else '[ ]'} {'~~' if todo.completed else ''}{todo.title}{'~~' if todo.completed else ''}"
+            message += f"\n- {'[x]' if todo.completed else '[ ]'} `{todo.id}` {'~~' if todo.completed else ''}{todo.title}{'~~' if todo.completed else ''}"
             i += 1
         return message
 
