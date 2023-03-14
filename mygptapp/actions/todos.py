@@ -12,7 +12,8 @@ class Todos:
         return message
 
     def get_todos(self):
-        todos = Todo.query.all()
+        # sorted by completed, then by id
+        todos = Todo.query.order_by(Todo.completed.asc(), Todo.id.asc()).all()
         return todos
 
     def add_todo(self, title):

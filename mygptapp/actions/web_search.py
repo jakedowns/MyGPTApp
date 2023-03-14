@@ -47,10 +47,10 @@ class WebSearch:
         i = 1
         for result in search_results:
             search_results_as_message += "\n\n"
-            search_results_as_message += "> result " + str(i)
-            search_results_as_message += "\n> result title: " + result['name']
-            search_results_as_message += "\n> result url: `" + result['url'] + "`"
-            search_results_as_message += "\n> result snippet: " + result['snippet']
+            search_results_as_message += f"> result {str(i)}"
+            search_results_as_message += f"\n> result title: {result['name']}"
+            search_results_as_message += f"\n> result url: [{result['url']}]({result['url']})"
+            search_results_as_message += "\n> result snippet: " + "\n".join(["> "+line for line in result['snippet'].split('\n')])
             search_results_as_message += "\n"
             search_results_as_message += "\n\n"
             i += 1

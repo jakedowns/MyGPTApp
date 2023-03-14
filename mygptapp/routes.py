@@ -30,7 +30,7 @@ heartbeat_time = 5
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return app.send_static_file('index.html')
 
 @app.route('/convo/<id>/messages')
 def get_convo_messages(id):

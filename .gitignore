@@ -2,4 +2,4 @@
 .history
 **/__pycache__/**
 mygptapp/database.db
-mygptapp/static
+mygptapp/static/graphs/*

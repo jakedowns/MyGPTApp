@@ -150,7 +150,8 @@ class Actions:
                 user_id=bot.id,
                 role="assistant",
                 content=web_search.search_results_to_message(action_obj["query"], search_results),
-                convo_id=1
+                convo_id=1,
+                options=options
             )
 
             response = web_search.process_web_search_results(current_prompt, action_obj["query"], search_results)
@@ -160,7 +161,8 @@ class Actions:
                 user_id=bot.id,
                 role="assistant",
                 content=response['choices'][0]['message']['content'],
-                convo_id=1
+                convo_id=1,
+                options=options
             )
             pass
         elif(action == "render_graph"):
@@ -179,9 +181,7 @@ class Actions:
                 role="assistant",
                 content=response['content'],
                 convo_id=1,
-                options={
-                    "clientid": "broadcast",
-                }
+                options=options
             )
             pass
         # TODO: revisit this
@@ -189,30 +189,27 @@ class Actions:
         #     pass
         elif(action == "think"):
             # 1. write action_obj["thought"] to db
-            # thoughtMessage = Message(user_id=bot.id, role="assistant", content=action_obj["thought"], convo_id=1, is_inner_thought=True)
-            # db.session.add(thoughtMessage)
-            # db.session.commit()
             save_and_emit_message(
                 user_id=bot.id,
                 role="assistant",
                 content=action_obj["thought"],
                 convo_id=1,
-                options={
+                options=options.extend({
                     "is_inner_thought": True
-                }
+                })
             )
 
             # Get all previous inner thoughts from the convo (limit to 10)
-            inner_thoughts = Message.query.filter_by(convo_id=1, is_inner_thought=True).order_by(Message.timestamp.desc()).limit(10).all()
+            inner_thoughts = Message.query.filter_by(convo_id=1, is_inner_thought=True).order_by(Message.created_at.desc()).limit(10).all()
             # reverse the list so the oldest thoughts are first
             inner_thoughts.reverse()
 
             # 2. get a response from OpenAI
             from mygptapp.openai_api import OpenAIAPI
             api = OpenAIAPI()
-            response = api.call_model(inner_thoughts.merge([{
+            response = api.call_model(inner_thoughts.extend([{
                 "role": "assistant",
-                "content": "I am a bot having a conversation with a human. this thread is just my inner thoughts about the conversation. right now I'm about to think my next thought to myself. the next message will be the contents of my thought. i will then respond to that thought using ONLY valid json, nothing more, containing ONE of the following actions: " + rules.get_actions_list_as_text()
+                "content": "I am a bot having a conversation with a human. this thread is just my inner thoughts about the conversation. right now I'm about to think my next thought to myself. the next message will be the contents of my thought. i will then respond to that thought using ONLY valid json, nothing more, containing ONE of the following actions: " + rules.get_actions_list_as_text() + "\n current prompt: " + current_prompt
             },{
                 "role": "assistant",
                 "content": action_obj["thought"]
@@ -224,10 +221,9 @@ class Actions:
                 convo_id=1,
                 role="assistant",
                 content=response['choices'][0]['message']['content'],
-                options={
+                options=options.extend({
                     "is_inner_thought": True,
-                    "clientid": "broadcast"
-                }
+                })
             )
             pass
         elif(action == "respond"):
@@ -244,6 +240,7 @@ class Actions:
                 user_id=bot.id,
                 role="assistant",
                 content=response['choices'][0]['message']['content'],
+                options=options
             )
         elif(action == "clear"):
             # delete all messages in the conversation in one line

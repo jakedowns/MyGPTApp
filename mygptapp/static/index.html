@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Chatbot</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js" integrity="sha384-LzhRnpGmQP+lOvWruF/lgkcqD+WDVt9fU3H4BWmwP5u5LTmkUGafMcpZKNObVMLU" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  </head>
+  <body>
+    <div id="app">
+        <h1>Chatbot</h1>
+        <div id="connection-status">
+            <div id="connection-status-led"
+            :class="{'connected':socket.connected, 'connecting':!socket.connected}"></div>
+        </div>
+        <div id="chat-ui">
+            <div id="chat-history">
+                <div v-for="message in messageHistory" :key="message.id" :class="'message'">
+                    <div class="message-participant" :class="{'inner-thought':message.is_inner_thought}" :data-participant="message.role">{{message.role}}<span v-if="message.is_inner_thought"><br/>(inner thought)</span></div>
+                    <div class="message-message" v-html="message.as_html"></div>
+                    <div class="message-timestamp">{{message.timestamp}}</div>
+                </div>
+            </div>
+            <div id="input-wrapper">
+                <form id="form"
+                @submit="submitForm($event)"
+                @keydown="maybeSubmit($event)"
+                :disabled="bot_holds_lock">
+                    <textarea id="prompt"
+                    name="prompt"
+                    rows="4"
+                    cols="30"
+                    autocomplete="false"
+                    v-model="prompt"
+                    @keyup="maybeChangePrompt($event)"
+                    :disabled="bot_holds_lock"></textarea>
+                    <input id="submit" type="submit" value="Submit" :disabled="bot_holds_lock">
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+      window.my_gpt_app = new Vue({
+        el: '#app',
+        data: {
+            bot_holds_lock: false,
+            selecting_prev_prompt: false,
+            prev_prompt_id: null,
+            messageHistory: [],
+            clientid: null,
+            socket: {connected:false},
+            prompt: null,
+        },
+        mounted(){
+            this.getConversationMessages();
+            this.focusInput()
+            this.socket = io()
+            this.socket.on('disconnect', (data)=>{
+                console.log('disconnect response:',data);
+                //socket.connect();
+                setTimeout(()=>{
+                    this.socket = io();
+                }, 300)
+            });
+            this.socket.on('connect', (data)=>{
+                console.log('connect response:',data);
+                if(data === null){
+                    return
+                }
+                // save the clientid
+                this.clientid = data?.clientid;
+                // connect to public and private rooms
+                this.socket.emit('join', {
+                    clientid: data?.clientid,
+                    room: "broadcast"
+                });
+                this.socket.emit('join', {
+                    clientid: data?.clientid,
+                    room: data?.clientid
+                });
+            })
+            this.socket.on('join_success', (data)=>{
+                let a = `${data?.room}`
+                let b = `${this?.clientid}`
+                let matchesRoom = (a == b) ? true : false
+                console.log('join_success response:',{
+                    data,
+                    a,
+                    b,
+                    matchesRoom
+                });
+                if(matchesRoom){
+                    // catch up on any messages we missed
+                    this.tellServerLastMessageID();
+                }
+            });
+            this.socket.on('message', (data)=>{
+                console.log('message received:', data);
+                if(data?.event == 'lock_released'){
+                    this.unlockInput();
+                }
+                else if(data?.event == "received"){
+                    if(this.messageHistory.length){
+                        // retroactively update the last message's id
+                        this.messageHistory[this.messageHistory.length-1].id = data.message_id;
+                    }
+                }
+                else if(data?.event == 'bot_response'){
+                    // add bot response to messageHistory
+                    this.insertMessage(data.message);
+                }
+                else if(data?.event == 'missed_messages'){
+                    // add missed messages to messageHistory
+                    // todo check for duplicates
+                    data.messages.forEach((message)=>{
+                        this.insertMessage(message)
+                    })
+                }
+                else {
+                    console.warn('unhandled message:', data);
+                }
+                this.scrollToEnd();
+            })
+        },
+        methods: {
+            lockInput(){
+                this.bot_holds_lock = true;
+            },
+            unlockInput(){
+                this.bot_holds_lock = false;
+                this.prompt = '';
+                this.focusInput()
+            },
+            focusInput(){
+                document.getElementById('prompt').focus();
+            },
+            submitForm(event){
+                if((this?.prompt ?? "").trim() == ""){
+                    return
+                }
+
+                this.lockInput();
+                event.preventDefault();
+
+                this.insertMessage({
+                    role:'user',
+                    content:this.prompt,
+                    created_at:Date.now()
+                })
+                this.scrollToEnd();
+
+                // this.socket.emit('message', {
+                //     message: this.prompt,
+                //     room: this.clientid
+                // });
+
+                const prompt_sent = this.prompt;
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/convo/1/message');
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.onload = () => {
+                    const decoded = JSON.parse(xhr.response);
+                    console.log({response:xhr.response, decoded});
+
+                    if(prompt_sent === "/clear" && decoded?.success === true){
+                        this.messageHistory = [];
+                        this.unlockInput();
+                        return;
+                    }
+
+                    if(decoded?.success === false){
+                        this.insertMessage({role:'bot',content:decoded?.error + "\n" + decoded?.response,created_at:Date.now()});
+                        this.scrollToEnd()
+                        return;
+                    }
+
+                    if(decoded?.success === true){
+                        return;
+                    }
+
+                    decoded.forEach(entry => {
+                        let historyEntry = entry.choices[0].message;
+                        historyEntry.created_at = new Date(entry.created).toLocaleTimeString();
+                        this.insertMessage(historyEntry);
+                    });
+                    this.scrollToEnd()
+                };
+                xhr.send(JSON.stringify({
+                    prompt:this.prompt,
+                    clientid:this.clientid
+                }));
+
+                this.prompt = 'thinking...'
+            },
+            maybeSubmit(e){
+                // if the user pressed enter with NO modifier, then submit the form
+                if(e.key === 'Enter' && !e.shiftKey){
+                    e.preventDefault();
+                    this.submitForm(e);
+                }
+            },
+            // handles markdown parsing
+            insertMessage(message){
+                let message_text = message?.content ?? "";
+                if(message?.role == "assistant"){
+                    try {
+                        // attempt to parse it as json
+                        let parsed = JSON.parse(message_text);
+                        console.log('parsed message:', parsed)
+                        let action = null;
+                        if(parsed){
+                            if(parsed?.actions){
+                                action = parsed.actions[0];
+                            }else if (parsed?.action){
+                                action = parsed;
+                            }
+                        }
+                        if(action){
+                            if(
+                                action.action == "think"
+                                || action.action == "respond"
+                                || action.action == "final_response"
+                            ){
+                                message_text = action?.text ?? action?.thought;
+                            }else if(
+                                action.action == "render_graph"){
+                                message_text = "```\n" + action.dotlang_string + "\n```";
+                            }
+                        }
+                    }catch(e){
+                        //console.warn('error parsing message as json:', e);
+                    }
+                }else{
+                    // convert newlines to <br/> tags
+                    message_text = message_text.replace(/\n/g, "<br/>");
+                }
+
+                let toParse = (message_text ?? "")
+                    .trim()
+                    .replace(/^[\u200B\u200C\u200D\u200E\u200F\uFEFF]/,"")
+                let parsedText  = marked.parse(toParse);
+                // WARNING THIS IS UNSAFE!
+                message.as_html = parsedText;
+
+                if(message?.created_at){
+                    console.log('converting timestamp:', message.created_at);
+                    message.timestamp = new Date(message.created_at).toLocaleTimeString();
+                }
+
+                this.messageHistory.push(message);
+            },
+            maybeChangePrompt(e){
+                // if they pressed the UP arrow, get the previous message from the messageHistory and put it in the prompt (only if the textarea input is empty)
+                //console.log(e.key);
+                if(e.key === 'ArrowUp'){
+                    e.preventDefault();
+                    let prompt = document.getElementById('prompt');
+                    console.log('maybeChangePrompt:', prompt.value, prompt.value.length, 'ArrowUp');
+                    if(prompt.value.length == 0 || selecting_previous_prompt){
+                        this.selecting_previous_prompt = true;
+                        // get the last message from the messageHistory from the user role
+                        let lastMessage = this.messageHistory.filter(message => message?.role == 'user' && (message?.content ?? "") != "");
+
+                        // if we have a previous prompt id, then get the message before that
+                        if(prev_prompt_id){
+                            lastMessage = lastMessage.filter(message => message?.id < prev_prompt_id);
+                        }
+                        lastMessage = lastMessage.pop();
+                        console.log("lastMessage:", lastMessage)
+                        if(lastMessage){
+                            this.prev_prompt_id = lastMessage?.id
+                            prompt.value = lastMessage.content;
+                        }
+                    }
+                }else{
+                    this.selecting_previous_prompt = false;
+                    this.prev_prompt_id = null;
+                }
+            },
+            tellServerLastMessageID(){
+                const latest_message_id = this.messageHistory.filter((message) => message?.id).pop()?.id ?? -1;
+                let payload = {
+                    clientid: my_gpt_app.clientid,
+                    last_message_id: latest_message_id
+                }
+                console.log('tell_server_last_message_id:', payload)
+                this.socket.emit('last_message_id', payload);
+            },
+            getConversationMessages(){
+                // retrieve all previous messages in the conversation
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', '/convo/1/messages');
+                xhr.onload = () => {
+                    const decoded = JSON.parse(xhr.response);
+                    console.log({response:xhr.response, decoded});
+                    if(decoded?.success){
+                        return;
+                    }
+                    this.messageHistory = [];
+                    decoded.forEach(message => {
+                        // convert decoded.created epoch timestamp to human readable time
+                        message.created_at = new Date(message.created).toLocaleTimeString();
+                        // pass the message to the insertMessage function to parse markdown to html
+                        this.insertMessage(message);
+                    });
+                    this.scrollToEnd();
+                };
+                xhr.send();
+            },
+            scrollToEnd(){
+                const chatHistory = document.getElementById('chat-history');
+                setTimeout(()=>{
+                    // scroll chat-history to bottom
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                }, 300);
+                this.focusInput()
+            }
+        }
+      })
+    </script>
+    <style>
+        h1 {
+            margin-left: 20px;
+        }
+        #connection-status {
+            position: fixed;
+            height: 40px;
+            width: 40px;
+            right: 0;
+            left: auto;
+            top: 0;
+            /*background-color: rgba(0,0,0,0.5);*/
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #connection-status p {
+            font-size: 2em;
+            color: white;
+        }
+        #connection-status-led {
+            width: 1em;
+            height: 1em;
+            border-radius: 50%;
+            background-color: red;
+            margin-right: 1em;
+        }
+        #connection-status-led.connected {
+            background-color: lime;
+        }
+        #connection-status-led.connecting {
+            background-color: orange;
+        }
+        body {
+            max-height: 100vh;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+        #chat-ui {
+            display: flex;
+            flex-direction: column;
+            max-height: 100vh;
+        }
+        #chat-ui #chat-history {
+            flex-grow: 1;
+            flex-shrink: 1;
+            flex-basis:  80vh;
+            overflow-y: scroll;
+        }
+        #input-wrapper {
+            resize:both;
+            overflow: hidden;
+            min-height: 210px;
+            height: 100%;
+            flex-basis: 210px;
+            flex-grow: 0;
+            flex-shrink: 0;
+        }
+        form {
+            height: 100%;
+            /*position: fixed;
+            bottom: 0;*/
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #333;
+        }
+        form textarea {
+            width: 100%;
+        }
+        #chat-history {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          padding: 10px;
+          background-color: #f7f7f7;
+          /*margin-bottom: 100px;*/
+        }
+
+        .message {
+          display: flex;
+          flex-direction: row;
+          gap: 10px;
+          padding: 5px;
+          border-radius: 5px;
+          background-color: #ffffff;
+        }
+        .message img {
+            max-width: 60vw;
+            height: auto;
+        }
+
+        .message-participant {
+          font-weight: bold;
+        }
+
+        .inner-thought {
+          font-style: italic;
+          font-size: 9px;
+        }
+
+        .message-timestamp {
+          font-size: 0.8em;
+          color: #666666;
+        }
+
+        .message-participant[data-participant="user"] {
+          color: #007bff;
+        }
+
+        .message-participant[data-participant="assistant"] {
+          color: #28a745;
+        }
+    </style>
+  </body>
+</html>
