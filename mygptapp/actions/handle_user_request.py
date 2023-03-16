@@ -1,9 +1,13 @@
+
 from flask import request, jsonify
 from mygptapp.models import Message, Conversation, User
+from mygptapp.actions.memories import Memories
 from mygptapp.schemas import MessageCreateSchema, OpenAIApiMessageSchema
 from mygptapp import db, rules, app, socketio
 import asyncio
-from mygptapp.utils import save_and_emit_message
+from mygptapp.utils import save_and_emit_message, emit_message
+
+memories = Memories()
 
 import threading
 
@@ -34,10 +38,11 @@ async def process_user_input_async(options):
         recent_messages = recent_messages[::-1]
         recent_messages = [OpenAIApiMessageSchema().dump(message) for message in recent_messages]
 
-        # print("recent_messages: ", recent_messages)
-
         # copy by value not by reference
         current_prompt = recent_messages[-1]["content"]
+
+        # print("recent_messages: ", recent_messages)
+
 
         # prepend rules.get_preamble_text() to the list of messages
         recent_messages.insert(0, {
@@ -45,9 +50,28 @@ async def process_user_input_async(options):
             "content": rules.get_preamble_text(),
         })
 
-        from mygptapp import api
+        #include bot's memory in the conversation history
+        _memories = memories.get_recent_memories()
+        _mems_msg = memories.memories_as_message(_memories)
+        recent_messages.insert(1,{"role":"assistant","content":"my recent memories are: \n"+_mems_msg})
+        print("recent memories: ", recent_messages[-1])
 
-        response = api.call_model(recent_messages)
+        recent_messages.append({
+            "role": "assistant",
+            "content": "I will now respond with a valid json response as tho i am a webserver hosting an api endpoint. i will not respond with python or any other language other than json without first wrapping it in a json actions array"
+            # "content": "I am now going to respond to the prompt by returning a message that will be commited to my memory. this message will contain my action plan for responding to the base prompt. The GPT+ augmentation server will parse my response and execute the first action in the planned action array. from there, i will get a chance to update the action plan before the server executes the next action in the array. this process will continue until i have no more actions to perform, or until i have reached the max number of sub-turns. the max number of sub-turns is currently set to " + str(MAX_ATTEMPTS) + ". my response will be in the following valid json format with a top level Actions key, mapped to an array of valid actions. I will make characters are properly encoded to be in a json response as tho i am a API server: {\"actions:[{\"action\": \"remember\", \"memory\": \"my current action plan for responding to the current prompt is: [action1, action2, action3]\"}]}",
+        })
+
+        from mygptapp import api
+        try:
+            response = api.call_model(recent_messages)
+        except Exception as e:
+            print("error: ", e)
+            emit_message(
+                "I am sorry, I am having trouble connecting to the GPT+ augmentation server. Please try again later. "+e,
+                options
+            )
+            return
 
         # specify the bot holds the lock for the conversation
         conversation.bot_holds_lock = True
@@ -140,6 +164,9 @@ def handle_user_request(options):
         db.session.commit()
         options["_socketio"].emit('message', {"event":"lock_released", "convo_id":convo_id}, room=options["clientid"])
         return {"success": True, "message_id": -1}
+
+    # common commands:
+    # "list todos"
 
     jakedowns = User.query.filter_by(username="jakedowns").first()
 

@@ -2,22 +2,22 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Chatbot</title>
+    <title>AliceGPT</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.socket.io/4.0.1/socket.io.min.js" integrity="sha384-LzhRnpGmQP+lOvWruF/lgkcqD+WDVt9fU3H4BWmwP5u5LTmkUGafMcpZKNObVMLU" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
   </head>
   <body>
     <div id="app">
-        <h1>Chatbot</h1>
+        <h1>AliceGPT</h1>
         <div id="connection-status">
             <div id="connection-status-led"
             :class="{'connected':socket.connected, 'connecting':!socket.connected}"></div>
         </div>
         <div id="chat-ui">
             <div id="chat-history">
-                <div v-for="message in messageHistory" :key="message.id" :class="'message'">
-                    <div class="message-participant" :class="{'inner-thought':message.is_inner_thought}" :data-participant="message.role">{{message.role}}<span v-if="message.is_inner_thought"><br/>(inner thought)</span></div>
+                <div v-for="(message,i) in messageHistory" :key="message.id + ' ' + i" :class="'message'">
+                    <div class="message-participant" :class="{'inner-thought':message.is_inner_thought}" :data-participant="message.role">{{message.role == "assistant" ? "alice" : message.role}}<span v-if="message.is_inner_thought"><br/>(inner thought)</span></div>
                     <div class="message-message" v-html="message.as_html"></div>
                     <div class="message-timestamp">{{message.timestamp}}</div>
                 </div>
@@ -51,7 +51,7 @@
             messageHistory: [],
             clientid: null,
             socket: {connected:false},
-            prompt: null,
+            prompt: '',
         },
         mounted(){
             this.getConversationMessages();
@@ -257,22 +257,21 @@
                 //console.log(e.key);
                 if(e.key === 'ArrowUp'){
                     e.preventDefault();
-                    let prompt = document.getElementById('prompt');
-                    console.log('maybeChangePrompt:', prompt.value, prompt.value.length, 'ArrowUp');
-                    if(prompt.value.length == 0 || selecting_previous_prompt){
+                    console.log('maybeChangePrompt:', this, this.prompt, this.prompt?.length, 'ArrowUp');
+                    if(this.prompt?.length == 0 || this.selecting_previous_prompt){
                         this.selecting_previous_prompt = true;
                         // get the last message from the messageHistory from the user role
                         let lastMessage = this.messageHistory.filter(message => message?.role == 'user' && (message?.content ?? "") != "");
 
                         // if we have a previous prompt id, then get the message before that
-                        if(prev_prompt_id){
+                        if(this.prev_prompt_id){
                             lastMessage = lastMessage.filter(message => message?.id < prev_prompt_id);
                         }
                         lastMessage = lastMessage.pop();
                         console.log("lastMessage:", lastMessage)
                         if(lastMessage){
                             this.prev_prompt_id = lastMessage?.id
-                            prompt.value = lastMessage.content;
+                            this.prompt = lastMessage.content;
                         }
                     }
                 }else{

@@ -1,18 +1,19 @@
-import datetime
+from datetime import datetime
 
 class Rules:
     def get_preamble_text(self):
-        today = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        today = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         text = "\nCONTEXT: you are an augmented assistant, you have access to the internet and other functions via the following actions:\n"
         text += self.get_actions_list_as_text()
         text += "\n\n"
         text += "PRIMARY RULES:\n"
-        text += "\nI want you to act as a api endpoint. I will type commands and you will reply with a json response. I want you to only reply with one unique json object per response, and nothing else. do not write explanations. remember you can only respond with ONE action at a time. please stay in character, you are acting as an api that can only return json action responses, no python. stay in character."
+        text += "\nI want you to act as a api endpoint. I will make requests with {action:user_request}. you will reply with {action:ACTION_OF_YOUR_CHOOSING}. remember you can only respond with ONE action at a time."
         text += "\nAdditional Rules:\n"
         text += "\n1. your entire response must be a valid json object with a single top-level key called 'actions' which will be an array value type, the array will be a list of actions to perform. the server will only process your first action in the array. if the action you are performing returns extra data, you will be prompted with a followup message to review the data and decide what to do with it. you can then respond to the followup message with a new action to perform, or you can respond with a final_response action to indicate you are done thinking and yeild control back to the user.\n"
         text += "\n2. the current date and time is " + today + "."
         text += "\n3. when building a response from the results of a web search or scrape url, please cite your sources"
         text += "\n4. if it seems like the user is asking for factual information, and you are not sure if you have the correct answer, please let the user know when you are hypothesizing, and when you are making a guess"
+        text += "\n5. remember `user_request` is a reserved action for the user ONLY."
         text += "\n\n"
         text += "\nExample Response:\n"
         text += "\n{\"actions\":[{\"action\":\"respond\", \"text\":\"hello world\"}]}"
@@ -38,15 +39,24 @@ class Rules:
                     }
                 }
             },
-            # "search_inner_thoughts": {
-            #     "description": "search your inner thoughts for a query",
-            #     "params": {
-            #         "query": {
-            #             "description": "the query to search for",
-            #             "required": True
-            #         }
-            #     }
-            # },
+            "remember": {
+                "description": "something you'd like to remember for later, this thought will be stored to the memories database and is retrievable via the 'recall' action",
+                "params": {
+                    "memory": {
+                        "description": "the memory to remember (max 1000 characters)",
+                        "required": True
+                    }
+                }
+            },
+            "recall": {
+                "description": "recall a memory from the memories database",
+                "params": {
+                    "memory": {
+                        "description": "the memory text to search for recall. pass 'random' for a random memory. pass '*' for all memories.",
+                        "required": True
+                    }
+                }
+            },
             "think": {
                 "description": "something you'd like to think about, this thought will be stored to the db, and run through the GPT-3 model to generate a response",
                 "params": {

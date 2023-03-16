@@ -1,15 +1,17 @@
-flask_debugtoolbar
-flask_socketio
+discord.py==2.1.0
+eventlet==0.33.3
+# flask_debugtoolbar
+Flask-SocketIO==5.3.2
 flask-marshmallow==0.14.0
 Flask-SQLAlchemy==3.0.3
 Flask==2.2.3
-neo4j
-networkx
-marshmallow-sqlalchemy
+# neo4j
+# networkx
+marshmallow-sqlalchemy==0.29.0
 openai==0.26.5
-pyppeteer
-Redis
-rq
-rq-dashboard
-SQLAlchemy
+# pyppeteer==1.0.2
+# redis==4.5.1
+# rq
+# rq-dashboard
+SQLAlchemy==2.0.4
 Flask[async]

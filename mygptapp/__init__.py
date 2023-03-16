@@ -32,6 +32,7 @@ sys.path.append(os.path.dirname(script_dir))
 # 	RemoveTodo,
 # }
 
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 bing_search_api_key = os.getenv("BING_SEARCH_API_KEY")
 bing_search_api = BingSearchAPI(bing_search_api_key)

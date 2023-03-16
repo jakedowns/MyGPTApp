@@ -2,6 +2,7 @@ import json
 from mygptapp import db, rules
 from mygptapp import bing_search_api, socketio
 from mygptapp.models import Message, User
+from mygptapp.actions.memories import Memories
 from mygptapp.actions.web_search import WebSearch
 #from mygptapp.actions.scrape_url import ScrapeUrl
 from mygptapp.actions.graphviz_api import GraphVizApi
@@ -11,6 +12,7 @@ from mygptapp.utils import save_and_emit_message, emit_message
 todos = Todos()
 web_search = WebSearch()
 graphviz_api = GraphVizApi()
+memories = Memories()
 
 ACTION_LIMIT = 1 # 5
 
@@ -194,7 +196,7 @@ class Actions:
                 role="assistant",
                 content=action_obj["thought"],
                 convo_id=1,
-                options=options.extend({
+                options=options.merge({
                     "is_inner_thought": True
                 })
             )
@@ -221,7 +223,7 @@ class Actions:
                 convo_id=1,
                 role="assistant",
                 content=response['choices'][0]['message']['content'],
-                options=options.extend({
+                options=options.merge({
                     "is_inner_thought": True,
                 })
             )
@@ -295,6 +297,27 @@ class Actions:
             response = {"status": "success", "message": "toggled todo", "release_lock": True}
             pass
         # elif(action == "get_reminders"):
+        elif(action == "remember"):
+            memory = memories.remember(action_obj["memory"])
+            memory_as_message = memories.memory_as_message(memory)
+            save_and_emit_message(
+                convo_id=1,
+                user_id=bot.id,
+                role="assistant",
+                content=memory_as_message,
+                options=options
+            )
+        elif(action == "recall"):
+            _memories = memories.recall(action_obj["memory"])
+            print("recalled: ", _memories)
+            memories_as_message = memories.memories_as_message(_memories)
+            save_and_emit_message(
+                convo_id=1,
+                user_id=bot.id,
+                role="assistant",
+                content=memories_as_message,
+                options=options
+            )
         else:
             print("unknown action: ", action)
             pass
